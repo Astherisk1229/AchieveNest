@@ -33,36 +33,20 @@ export async function fetchAwardCriteriaHierarchy(awardId) {
   return unwrapApiData(response)
 }
 
-export async function createAwardCriteriaHierarchyDraft(awardId, metadata) {
-  const response = await apiClient.post(`/osad/awards/${awardId}/criteria-hierarchy/drafts`, metadata, { headers: getAuthHeaders() })
-  return unwrapApiData(response)
-}
-
-export async function saveAwardCriteriaHierarchyDraft(awardId, versionId, hierarchy) {
-  const response = await apiClient.put(`/osad/awards/${awardId}/criteria-hierarchy/drafts/${versionId}`, { hierarchy }, { headers: getAuthHeaders() })
-  return unwrapApiData(response)
-}
-
-export async function validateAwardCriteriaHierarchyDraft(awardId, versionId) {
-  const response = await apiClient.post(`/osad/awards/${awardId}/criteria-hierarchy/drafts/${versionId}/validate`, {}, { headers: getAuthHeaders() })
-  return unwrapApiData(response)
-}
-
-export async function publishAwardCriteriaHierarchyDraft(awardId, versionId) {
-  const response = await apiClient.post(`/osad/awards/${awardId}/criteria-hierarchy/drafts/${versionId}/publish`, {}, { headers: getAuthHeaders() })
+export async function saveAwardCriteriaHierarchy(awardId, hierarchy) {
+  const response = await apiClient.put(`/osad/awards/${awardId}/criteria-hierarchy`, { hierarchy }, { headers: getAuthHeaders() })
   return unwrapApiData(response)
 }
 
 /**
- * Fetches potential award candidates and dean nominations across all awards with optional filters.
- * @param {Object} filters { award_id, cycle_id, college_id, source }
+ * Fetches portfolio-evaluated award candidates with optional filters.
+ * @param {Object} filters { award_id, cycle_id, college_id }
  */
 export async function fetchCandidates(filters = {}) {
   const params = {}
   if (filters.award_id && filters.award_id !== 'all') params.award_id = filters.award_id
   if (filters.cycle_id) params.cycle_id = filters.cycle_id
   if (filters.college_id && filters.college_id !== 'all') params.college_id = filters.college_id
-  if (filters.source && filters.source !== 'all') params.source = filters.source
 
   const response = await apiClient.get('/osad/candidates', {
     params,
@@ -237,30 +221,5 @@ export async function fetchStudentCandidateStatus(awardId, studentId) {
     headers: getAuthHeaders()
   })
 
-  return response?.data || response
-}
-
-/**
- * Submits a Dean candidate nomination for an award within the Dean's assigned college.
- * @param {Object} payload { student_profile_id, award_definition_id, cycle_id, justification }
- */
-export async function submitDeanNomination(payload) {
-  const response = await apiClient.post('/dean/nominations', payload, {
-    headers: getAuthHeaders()
-  })
-
-  return response?.data || response
-}
-
-/** Verified portfolio records that have no scoring contributions yet. */
-export async function fetchUnscoredRecords() {
-  const response = await apiClient.get('/osad/scoring/unscored', { headers: getAuthHeaders() })
-  const data = response?.data || response || {}
-  return { records: Array.isArray(data.records) ? data.records : [], total: Number(data.total) || 0 }
-}
-
-/** Idempotent retry of scoring for one verified record. */
-export async function rescoreRecord(recordId) {
-  const response = await apiClient.post(`/osad/scoring/records/${recordId}/rescore`, {}, { headers: getAuthHeaders() })
   return response?.data || response
 }

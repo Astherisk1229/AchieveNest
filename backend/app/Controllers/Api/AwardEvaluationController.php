@@ -273,7 +273,7 @@ class AwardEvaluationController extends Controller
 
     /**
      * GET /api/v1/osad/candidates
-     * Lists all potential award candidates and dean-nominated candidates across awards.
+     * Lists portfolio-evaluated award candidates across awards.
      */
     public function listAllCandidates(): mixed
     {
@@ -289,7 +289,6 @@ class AwardEvaluationController extends Controller
         $awardFilter = trim((string) ($this->request->getGet('award_id') ?? ''));
         $cycleFilter = trim((string) ($this->request->getGet('cycle_id') ?? ''));
         $collegeFilter = trim((string) ($this->request->getGet('college_id') ?? ''));
-        $sourceFilter = trim((string) ($this->request->getGet('source') ?? ''));
 
         $db = db_connect();
         $cycle = $this->awardService->resolveActiveCycle($cycleFilter !== '' ? $cycleFilter : null);
@@ -346,51 +345,7 @@ class AwardEvaluationController extends Controller
         }
 
         try {
-            $evaluations = ($sourceFilter === 'dean_nomination') ? [] : $evalBuilder->get()->getResultArray();
-
-        // 2. Dean nominations
-        $nomBuilder = $db->table('dean_student_nominations dsn')
-            ->select([
-                'dsn.id AS nomination_id',
-                'dsn.cycle_id',
-                'dsn.award_definition_id',
-                'ad.code AS award_code',
-                'ad.name AS award_name',
-                'ad.candidate_threshold_percent',
-                'dsn.student_profile_id',
-                'p.full_name AS student_name',
-                'p.institutional_id AS student_id_number',
-                'p.email AS student_email',
-                'ap.id AS program_id',
-                'ap.code AS program_code',
-                'ap.name AS program_name',
-                'c.id AS college_id',
-                'c.code AS college_code',
-                'c.name AS college_name',
-                'dsn.justification',
-                'dsn.status AS nomination_status',
-                'dsn.nominated_at',
-                'dean_p.full_name AS nominator_name',
-            ])
-            ->join('award_definitions ad', 'ad.id = dsn.award_definition_id')
-            ->join('profiles p', 'p.id = dsn.student_profile_id')
-            ->join('student_program_enrollments spe', 'spe.student_profile_id = p.id AND spe.is_active = 1', 'left')
-            ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
-            ->join('colleges c', 'c.id = ap.college_id', 'left')
-            ->join('dean_assignments da', 'da.id = dsn.dean_assignment_id')
-            ->join('profiles dean_p', 'dean_p.id = da.personnel_profile_id')
-            ->where('dsn.cycle_id', $cycle['id'])
-            ->where('dsn.status', 'active')
-            ->orderBy('dsn.nominated_at', 'DESC');
-
-        if ($awardFilter !== '' && $awardFilter !== 'all') {
-            $nomBuilder->where('dsn.award_definition_id', $awardFilter);
-        }
-        if ($collegeFilter !== '' && $collegeFilter !== 'all') {
-            $nomBuilder->where('c.id', $collegeFilter);
-        }
-
-            $nominations = ($sourceFilter === 'portfolio_evaluation') ? [] : $nomBuilder->get()->getResultArray();
+            $evaluations = $evalBuilder->get()->getResultArray();
         } catch (\Throwable $e) {
             // Never expose SQL/driver details to the browser; keep them in the server log.
             log_message('error', '[AwardEvaluationController::listAllCandidates] ' . $e->getMessage());
@@ -422,9 +377,6 @@ class AwardEvaluationController extends Controller
                 'candidate_threshold_percent' => $e['candidate_threshold_percent'],
                 'eligibility_source'        => 'portfolio_evaluation',
                 'evaluation_id'             => $e['evaluation_id'],
-                'nomination_id'             => null,
-                'nominator_name'            => null,
-                'justification'             => null,
                 'raw_score'                 => (float) $e['raw_score'],
                 'potential_score'           => (float) $e['potential_score'],
                 'verified_evidence_count'   => (int) $e['verified_evidence_count'],
@@ -433,7 +385,6 @@ class AwardEvaluationController extends Controller
                     : false,
                 'outcome'                   => $this->candidateOutcomeLabel($e['candidate_status'] ?? null, $e['evaluation_status'] ?? null),
                 'evaluated_at'              => $e['evaluated_at'],
-                'nominated_at'              => null,
             ];
             $candidates[] = array_merge($candidate, AwardApiContractService::score([
                 'raw_score' => $e['raw_score'],
@@ -444,38 +395,6 @@ class AwardEvaluationController extends Controller
                 'qualification_basis' => 'PORTFOLIO_THRESHOLD',
                 'scoring_status' => 'VALID',
             ]));
-        }
-
-        foreach ($nominations as $n) {
-            $candidates[] = [
-                'candidate_id'              => 'nom-' . $n['nomination_id'],
-                'student_profile_id'        => $n['student_profile_id'],
-                'student_name'              => $n['student_name'],
-                'student_id_number'         => $n['student_id_number'],
-                'student_email'             => $n['student_email'],
-                'program_id'                => $n['program_id'],
-                'program_code'              => $n['program_code'],
-                'program_name'              => $n['program_name'],
-                'college_id'                => $n['college_id'],
-                'college_code'              => $n['college_code'],
-                'college_name'              => $n['college_name'],
-                'award_definition_id'       => $n['award_definition_id'],
-                'award_code'                => $n['award_code'],
-                'award_name'                => $n['award_name'],
-                'candidate_threshold_percent' => $n['candidate_threshold_percent'],
-                'eligibility_source'        => 'dean_nomination',
-                'evaluation_id'             => null,
-                'nomination_id'             => $n['nomination_id'],
-                'nominator_name'            => $n['nominator_name'],
-                'justification'             => $n['justification'],
-                'raw_score'                 => null,
-                'potential_score'           => null,
-                'verified_evidence_count'   => null,
-                'is_candidate'              => true,
-                'outcome'                   => 'Dean-Nominated Candidate',
-                'evaluated_at'              => null,
-                'nominated_at'              => $n['nominated_at'],
-            ];
         }
 
         return $this->respond([
@@ -558,64 +477,6 @@ class AwardEvaluationController extends Controller
                 'human_only_criteria' => [],
             ],
         ], 200);
-    }
-
-    /**
-     * POST /api/v1/dean/nominations
-     * Dean submits a candidate nomination for an award.
-     * Approved rule: Active College Dean may nominate ANY eligible student across the university.
-     */
-    public function createDeanNomination(): mixed
-    {
-        $actor = $this->resolveActor();
-        if ($actor === null) {
-            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
-        }
-
-        if (! $this->authz->award()->canNominateStudent($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Active College Dean assignment required to submit award nominations.']], 403);
-        }
-
-        $db = db_connect();
-        $deanAssignment = $db->table('dean_assignments')
-            ->where('personnel_profile_id', $actor['profile']['id'])
-            ->where('is_active', 1)
-            ->get()->getRowArray();
-
-        if ($deanAssignment === null) {
-            return $this->respond(['error' => ['code' => 'ACTIVE_DEAN_ASSIGNMENT_REQUIRED', 'message' => 'No active Dean assignment found.']], 403);
-        }
-
-        $json = $this->request->getJSON(true) ?? [];
-        $studentId = trim((string) ($json['student_profile_id'] ?? ''));
-        $awardId = trim((string) ($json['award_definition_id'] ?? ''));
-        $cycleId = trim((string) ($json['cycle_id'] ?? ''));
-        $justification = trim((string) ($json['justification'] ?? ''));
-
-        if ($studentId === '' || $awardId === '' || $justification === '') {
-            return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'student_profile_id, award_definition_id, and justification are required.']], 422);
-        }
-
-        try {
-            $result = $this->awardService->createDeanNomination(
-                $actor['profile']['id'],
-                $deanAssignment['id'],
-                $studentId,
-                $awardId,
-                $cycleId !== '' ? $cycleId : null,
-                $justification
-            );
-
-            return $this->respondCreated([
-                'data' => [
-                    'message'       => 'Dean nomination submitted successfully.',
-                    'nomination_id' => $result['nomination_id'],
-                ],
-            ]);
-        } catch (Throwable $e) {
-            log_message('error', '[AwardEvaluationController::createDeanNomination] ' . $e->getMessage());
-            return $this->respond(['error' => ['code' => 'NOMINATION_FAILED', 'message' => 'Failed to record nomination.']], 422);
-        }
     }
 
     /**

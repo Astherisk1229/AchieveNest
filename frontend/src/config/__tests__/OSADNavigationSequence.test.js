@@ -14,26 +14,20 @@ describe('Plan 06 Phase 3 — OSAD Navigation Sequence Rules', () => {
     assigned_roles: [CANONICAL_ROLES.OSAD_STAFF]
   }
 
-  it('renders exactly 10 authorized items in authoritative sequence', () => {
+  it('renders exactly 6 authorized items in authoritative sequence', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(10)
+    expect(nav).toHaveLength(6)
 
     const expectedOrder = [
       // 1. Overview
       'osad-dashboard',
       // 2. Student & Institutional Setup
-      'osad-academic-structure',
-      'osad-student-accounts',
-      'osad-student-organizations',
+      'osad-student-management',
       'osad-password-resets',
       // 3. Portfolio & Evaluation
       'osad-award-categories',
       'osad-award-candidate-review',
-      // 4. Events & Certificates
-      'osad-certificate-templates',
-      // 5. Governance & Reports
-      'osad-accreditation-reports',
-      'osad-activity-log'
+      'osad-portfolio-submission-portal',
     ]
 
     expect(nav.map(item => item.id)).toEqual(expectedOrder)
@@ -52,9 +46,9 @@ describe('Plan 06 Phase 3 — OSAD Navigation Sequence Rules', () => {
     expect(setupIndex).toBeLessThan(evalIndex)
   })
 
-  it('places Student Accounts before Award Candidates', () => {
+  it('places Student Management before Award Candidates', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    const accountsIndex = nav.findIndex(i => i.id === 'osad-student-accounts')
+    const accountsIndex = nav.findIndex(i => i.id === 'osad-student-management')
     const reviewIndex = nav.findIndex(i => i.id === 'osad-award-candidate-review')
     expect(accountsIndex).toBeLessThan(reviewIndex)
   })
@@ -66,10 +60,4 @@ describe('Plan 06 Phase 3 — OSAD Navigation Sequence Rules', () => {
     expect(criteriaIndex).toBeLessThan(reviewIndex)
   })
 
-  it('places Governance & Reports after all operational and evaluation groups', () => {
-    const nav = getAuthorizedNavigationForSession(osadSession)
-    const govIndexes = nav.map((item, idx) => item.workflowFamily === 'governance' ? idx : -1).filter(idx => idx !== -1)
-    const lastOpIndex = nav.findIndex(i => i.id === 'osad-certificate-templates')
-    expect(govIndexes[0]).toBeGreaterThan(lastOpIndex)
-  })
 })

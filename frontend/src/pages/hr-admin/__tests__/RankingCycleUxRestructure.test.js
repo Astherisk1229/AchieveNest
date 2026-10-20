@@ -18,16 +18,17 @@ describe('Ranking Period UX restructure', () => {
 
   it('counts HR portfolio work from server-authorized evaluation actions only', () => {
     const page = read('pages/hr-admin/ranking-cycle-stages/EvaluationStage.jsx')
-    expect(page).toContain('needHrEvaluation')
+    expect(page).toContain('needsHrAction')
     expect(page).toContain("['start_evaluation', 'evaluate_items']")
-    expect(page).toContain('No portfolios need HR evaluation.')
+    expect(page).toContain('No portfolios need HR action.')
   })
 
   it('enables HR-only annual-review selection, category filtering, and eligibility visibility', () => {
     const page = read('pages/dean/DeanAnnualReviewEligibilityPage.jsx')
     expect(page).toContain("else if (embedded) setEmbeddedPersonnelId(String(id))")
     for (const category of ['All HR-assigned personnel', 'Dean-role Faculty', 'Non-Teaching Personnel']) expect(page).toContain(category)
-    expect(page).toContain('{embedded && <Status value={item.eligibility.eligibility_status} eligibility/>}')
+    expect(page).toContain('const submissionReadiness = eligibility.submission_readiness_status || eligibility.eligibility_status')
+    expect(page).toContain('label={submissionReadiness === \'eligible\' ? \'Ready to submit\' : null}')
   })
 
   it('provides evaluation summaries with a college filter backed by returned result records', () => {
@@ -92,9 +93,8 @@ describe('Ranking Period UX restructure', () => {
     for (const call of ['hrEvaluationService.start', 'hrEvaluationService.returnForRevision', 'hrEvaluationService.markReady', 'hrEvaluationService.finalize']) {
       expect(evaluation).toContain(call)
     }
-    expect(evaluation).toContain('<FacultyPhaseOWorkspace')
-    expect(evaluation).toContain('mayOpenFacultyPhaseO')
-    expect(evaluation).toContain('mayUseGenericFinalizer')
+    expect(evaluation).toContain('PortfolioEvaluationStudio')
+    expect(evaluation).toContain('allowed_actions')
     expect(evaluation).toContain('workflow_state')
   })
 
@@ -118,7 +118,8 @@ describe('Ranking Period UX restructure', () => {
     expect(layout).toMatch(/isHrRankingWorkspace\s+\?\s+null/)
     expect(layout).not.toContain("label: 'Ranking Periods', path: '/hr/ranking-cycles?tab=periods'")
     expect(layout).toContain('isHrRankingWorkspace')
-    expect(workspace).toContain('HR_PERIOD_WORKSPACE_TABS.map')
+    expect(workspace).toContain('HR_PERIOD_WORKSPACE_TABS.filter')
+    expect(workspace).toContain('.map(item =>')
     expect(workspace).toContain('Back to Ranking Periods')
   })
 

@@ -35,6 +35,7 @@ final class CertificateController extends Controller
     public function templates(): mixed
     {
         $actor=$this->actor();if(!$actor)return $this->unauthorized();
+        if (!$this->canIssue($actor)) return $this->forbidden();
         $purpose=strtoupper(trim((string)$this->request->getGet('purpose')));$db=$this->db;
         $builder=$db->table('certificate_template_families ctf')
             ->select('ctf.*,ctv.id template_version_id,ctv.version_number,ctv.layout_config,ctv.signatories_config,ctv.placeholder_contract_json,ctv.signatory_slots_json')
@@ -46,6 +47,7 @@ final class CertificateController extends Controller
     public function readiness(): mixed
     {
         $actor=$this->actor();if(!$actor)return $this->unauthorized();$payload=$this->request->getJSON(true)?:[];
+        if (!$this->canIssue($actor)) return $this->forbidden();
         $context=$this->context($payload);if(isset($context['error']))return $this->respond(['error'=>$context['error']],$context['status']);
         return $this->respond(['data'=>$context['readiness']]);
     }
@@ -53,24 +55,22 @@ final class CertificateController extends Controller
     public function issue(): mixed
     {
         $actor=$this->actor();if(!$actor)return $this->unauthorized();
-        if(!$this->canIssue($actor))return $this->respond(['error'=>['code'=>'FORBIDDEN','message'=>'Certificate issuance requires OSAD staff or an organization moderator assignment.']],403);
+        if(!$this->canIssue($actor))return $this->forbidden();
         try{$result=$this->issuance->issue($actor,$this->request->getJSON(true)?:[]);$status=$result['issued']?201:(($result['status']??'')==='ALREADY_ISSUED'?200:422);return $this->respond(['data'=>$result],$status);}
         catch(Throwable $e){$code=$e->getMessage();$status=match(true){$code==='SOURCE_RECORD_NOT_FOUND'=>404,$code==='UNAUTHORIZED_CERTIFICATE_ISSUANCE'=>403,str_starts_with($code,'IDEMPOTENCY_')=>409,default=>422};return $this->respond(['error'=>['code'=>$code,'message'=>$this->errorMessage($code)]],$status);}
     }
 
     /**
      * GET /api/v1/certificates — issued certificate history with summary counts.
-     * OSAD sees all; an organization moderator sees only certificates sourced from their organizations' events.
+     * An organization moderator sees only certificates sourced from their organizations' events.
      * Optional filters: status (ISSUED|SUPERSEDED|REVOKED), event_id. Returns at most 200 rows, newest first.
      */
     public function index(): mixed
     {
         $actor = $this->actor();
         if (!$actor) return $this->unauthorized();
-        $roles = $actor['roles'] ?? [];
-        $isOsad = in_array('osad_staff', $roles, true);
-        if (!$isOsad && !in_array('organization_moderator', $roles, true)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Certificate history requires OSAD staff or an organization moderator assignment.']], 403);
+        if (!in_array('organization_moderator', $actor['roles'] ?? [], true)) {
+            return $this->forbidden();
         }
         $status = strtoupper(trim((string) $this->request->getGet('status')));
         if ($status !== '' && !in_array($status, ['ISSUED', 'SUPERSEDED', 'REVOKED'], true)) {
@@ -83,30 +83,28 @@ final class CertificateController extends Controller
         }
 
         $orgIds = [];
-        if (!$isOsad) {
-            $orgIds = (new \App\Services\AuthorizationService())->getModeratedOrganizationIds($actor);
-            if ($orgIds === []) {
-                return $this->respond(['data' => ['certificates' => [], 'summary' => ['total' => 0, 'issued' => 0, 'revoked' => 0, 'superseded' => 0]]]);
-            }
+        $orgIds = (new \App\Services\AuthorizationService())->getModeratedOrganizationIds($actor);
+        if ($orgIds === []) {
+            return $this->respond(['data' => ['certificates' => [], 'summary' => ['total' => 0, 'issued' => 0, 'revoked' => 0, 'superseded' => 0]]]);
         }
 
-        $base = static function ($db, bool $isOsad, array $orgIds, string $eventId) {
+        $base = static function ($db, array $orgIds, string $eventId) {
             $b = $db->table('certificate_issuances ci')
                 ->join('student_portfolio_records spr', 'spr.id = ci.source_record_id', 'left')
                 ->join('events e', "e.id = JSON_UNQUOTE(JSON_EXTRACT(spr.structured_metadata, '$.origin_event_id'))", 'left');
-            if (!$isOsad) $b->whereIn('e.organization_id', $orgIds);
+            $b->whereIn('e.organization_id', $orgIds);
             if ($eventId !== '') $b->where('e.id', $eventId);
             return $b;
         };
 
-        $summaryRows = $base($db, $isOsad, $orgIds, $eventId)->select('ci.status, COUNT(*) AS n', false)->groupBy('ci.status')->get()->getResultArray();
+        $summaryRows = $base($db, $orgIds, $eventId)->select('ci.status, COUNT(*) AS n', false)->groupBy('ci.status')->get()->getResultArray();
         $summary = ['total' => 0, 'issued' => 0, 'revoked' => 0, 'superseded' => 0];
         foreach ($summaryRows as $row) {
             $summary['total'] += (int) $row['n'];
             $summary[strtolower((string) $row['status'])] = (int) $row['n'];
         }
 
-        $list = $base($db, $isOsad, $orgIds, $eventId)
+        $list = $base($db, $orgIds, $eventId)
             ->join('profiles p', 'p.id = ci.student_id', 'left')
             ->select('ci.id, ci.certificate_number, ci.public_verification_id, ci.certificate_purpose, ci.status, ci.issued_at, ci.revoked_at, ci.revocation_reason, ci.superseded_by_certificate_id, p.full_name AS student_name, p.institutional_id AS student_id_number, e.id AS event_id, e.title AS event_title');
         if ($status !== '') $list->where('ci.status', $status);
@@ -124,50 +122,6 @@ final class CertificateController extends Controller
         $certificate=$this->issuance->verify($publicId);
         if($certificate===null)return $this->respond(['error'=>['code'=>'CERTIFICATE_NOT_FOUND','message'=>'No certificate matches this verification ID.']],404);
         return $this->respond(['data'=>$certificate]);
-    }
-
-    public function revoke(string $certificateId): mixed
-    {
-        $actor = $this->actor();
-        if (!$actor) return $this->unauthorized();
-        if (!in_array('osad_staff', $actor['roles'] ?? [], true)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Certificate revocation requires OSAD staff role.']], 403);
-        }
-        try {
-            $result = $this->issuance->revoke($actor, $certificateId, $this->request->getJSON(true) ?: []);
-            return $this->respond(['data' => $result], 200);
-        } catch (Throwable $e) {
-            $code = $e->getMessage();
-            $status = match (true) {
-                $code === 'CERTIFICATE_NOT_FOUND' => 404,
-                $code === 'FORBIDDEN' || $code === 'UNAUTHORIZED_REVOCATION' => 403,
-                str_starts_with($code, 'IDEMPOTENCY_KEY_REUSED') || str_starts_with($code, 'IDEMPOTENCY_REQUEST_IN_PROGRESS') || in_array($code, ['CERTIFICATE_ALREADY_REVOKED', 'CERTIFICATE_ALREADY_SUPERSEDED', 'CERTIFICATE_NOT_IN_ISSUABLE_STATE'], true) => 409,
-                default => 422
-            };
-            return $this->respond(['error' => ['code' => $code, 'message' => $this->errorMessage($code)]], $status);
-        }
-    }
-
-    public function reissue(string $certificateId): mixed
-    {
-        $actor = $this->actor();
-        if (!$actor) return $this->unauthorized();
-        if (!in_array('osad_staff', $actor['roles'] ?? [], true)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Certificate reissue requires OSAD staff role.']], 403);
-        }
-        try {
-            $result = $this->issuance->reissue($actor, $certificateId, $this->request->getJSON(true) ?: []);
-            return $this->respond(['data' => $result], 200);
-        } catch (Throwable $e) {
-            $code = $e->getMessage();
-            $status = match (true) {
-                $code === 'CERTIFICATE_NOT_FOUND' => 404,
-                $code === 'FORBIDDEN' || $code === 'UNAUTHORIZED_REISSUE' => 403,
-                str_starts_with($code, 'IDEMPOTENCY_KEY_REUSED') || str_starts_with($code, 'IDEMPOTENCY_REQUEST_IN_PROGRESS') || in_array($code, ['CERTIFICATE_REVOKED', 'CERTIFICATE_ALREADY_SUPERSEDED', 'CERTIFICATE_NOT_IN_ISSUABLE_STATE'], true) => 409,
-                default => 422
-            };
-            return $this->respond(['error' => ['code' => $code, 'message' => $this->errorMessage($code)]], $status);
-        }
     }
 
     public function pdf(string $certificateId): mixed
@@ -250,13 +204,10 @@ final class CertificateController extends Controller
 
     private function decodeTemplate(array $row): array { $row['placeholder_contract']=json_decode($row['placeholder_contract_json']??'[]',true)?:[];$row['signatory_slots']=json_decode($row['signatory_slots_json']??'[]',true)?:[];$row['status']='PUBLISHED';return $row; }
     private function actor(): ?array { return $this->actors->resolveActor($this->request->getHeaderLine('Authorization')); }
-    private function canIssue(array $actor): bool { return in_array('osad_staff',$actor['roles']??[],true)||in_array('organization_moderator',$actor['roles']??[],true); }
+    private function canIssue(array $actor): bool { return in_array('organization_moderator',$actor['roles']??[],true); }
     private function canDownload(array $actor, array $issuance): bool
     {
         $roles = $actor['roles'] ?? [];
-        if (in_array('osad_staff', $roles, true)) {
-            return true;
-        }
         $actorProfileId = (string)($actor['profile']['id'] ?? '');
         if ($actorProfileId !== '' && $actorProfileId === (string)($issuance['student_id'] ?? '')) {
             return true;
@@ -282,6 +233,7 @@ final class CertificateController extends Controller
         return false;
     }
     private function unauthorized(): mixed { return $this->respond(['error'=>['code'=>'UNAUTHORIZED','message'=>'Valid active authenticated session required.']],401); }
+    private function forbidden(): mixed { return $this->respond(['error'=>['code'=>'FORBIDDEN','message'=>'Certificate access requires an organization moderator assignment.']],403); }
     private function errorMessage(string $code): string {
         return match($code){
             'UNAUTHORIZED_CERTIFICATE_ISSUANCE'=>'You are not authorized to issue this certificate for the source event.',

@@ -11,7 +11,7 @@ vi.mock('../../../../services/portfolioService', () => ({
 }))
 
 import CoordinatorDashboardPage from '../CoordinatorDashboardPage'
-import { CoordinatorDecisionActions, CoordinatorEvidenceList, formatBytes, validateDecision } from '../CoordinatorReviewParts'
+import { CoordinatorDecisionActions, validateDecision } from '../CoordinatorReviewParts'
 import { STATUS_FILTERS, formatApiError, normalizeQueueRecord } from '../../../../hooks/useVerification'
 
 describe('Step 2 coordinator review', () => {
@@ -33,19 +33,6 @@ describe('Step 2 coordinator review', () => {
       .toBe('A specific explanation remark is mandatory. (REMARKS_REQUIRED)')
     expect(formatApiError({ error: { code: 'FORBIDDEN', message: 'You are not the authorized active Program Coordinator for this student program.' } }))
       .toContain('(FORBIDDEN)')
-  })
-
-  it('renders real file name, MIME type and size for every evidence item', () => {
-    const html = renderToStaticMarkup(<CoordinatorEvidenceList evidence={[
-      { id: 'e1', original_filename: 'appointment.pdf', detected_mime_type: 'application/pdf', byte_size: 353280 },
-      { id: 'e2', original_filename: 'photo.png', detected_mime_type: 'image/png', byte_size: 1258291 }
-    ]} />)
-    expect(html).toContain('appointment.pdf')
-    expect(html).toContain('application/pdf • 345 KB')
-    expect(html).toContain('photo.png')
-    expect(html).toContain('image/png • 1.2 MB')
-    expect(html).not.toContain('Validated PDF')
-    expect(formatBytes(512)).toBe('512 B')
   })
 
   it('offers Approve, Return and Reject only for records awaiting review', () => {

@@ -21,7 +21,7 @@ class RecommendedRankService
 
  public function suggest(array $actor,string $evaluationId):array
  {
-  $c=$this->context($evaluationId);$this->authorize($actor,$c);
+  $c=$this->context($evaluationId);RankingCycleOperationalAvailability::assertEnabled($this->db,(string)$c['evaluation']['evaluation_period_id']);$this->authorize($actor,$c);
   $passed=$c['total'] >= $c['threshold'];$present=$this->rank($c['present_rank']);$applied=$this->rank($c['applied']['confirmed_rank_code']);
   $suggested=$passed?$applied:$present;$outcome=$passed?'rank_applied_for':'retained_present_rank';
   $options=[['rank_code'=>$suggested['rank_code'],'display_label'=>$suggested['display_label'],'option_type'=>$outcome]];
@@ -39,7 +39,7 @@ class RecommendedRankService
  }
  public function confirm(array $actor,string $id,string $rankCode,?string $reason):array
  {
-  $d=$this->decision($id);if($d['status']!=='suggested')throw new RuntimeException('RECOMMENDED_RANK_NOT_CONFIRMABLE');$c=$this->context($d['evaluation_id']);$this->authorize($actor,$c);
+  $d=$this->decision($id);if($d['status']!=='suggested')throw new RuntimeException('RECOMMENDED_RANK_NOT_CONFIRMABLE');RankingCycleOperationalAvailability::assertEnabled($this->db,(string)$d['ranking_track_id']);$c=$this->context($d['evaluation_id']);$this->authorize($actor,$c);
   if(!hash_equals($d['context_hash'],$c['hash'])){$this->db->table('personnel_recommended_rank_decisions')->where('id',$id)->update(['status'=>'stale']);$this->event($id,$d['personnel_profile_id'],'stale_rejected',(string)$actor['profile']['id'],['current_context_hash'=>$c['hash']]);throw new RuntimeException('STALE_RECOMMENDED_RANK_SUGGESTION');}
   $rankCode=trim($rankCode);$valid=array_column($d['valid_rank_options'],'rank_code');if($rankCode===''||!in_array($rankCode,$valid,true))throw new InvalidArgumentException('INVALID_RECOMMENDED_RANK_OPTION');
   $deviation=$rankCode!==$d['suggested_rank_code'];if($deviation&&trim((string)$reason)==='')throw new InvalidArgumentException('DEVIATION_JUSTIFICATION_REQUIRED');

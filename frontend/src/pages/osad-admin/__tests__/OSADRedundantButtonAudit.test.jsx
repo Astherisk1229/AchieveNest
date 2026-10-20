@@ -7,7 +7,6 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import OSADAcademicProgramsPage from '../OSADAcademicProgramsPage'
-import OSADCertificateTemplatesPage from '../OSADCertificateTemplatesPage'
 import OSADStudentOrganizationsPage from '../OSADStudentOrganizationsPage'
 
 describe('Plan 06 Phase 4 — OSAD Redundant Button & Action Hierarchy Audit', () => {
@@ -27,11 +26,6 @@ describe('Plan 06 Phase 4 — OSAD Redundant Button & Action Hierarchy Audit', (
     expect(element.type).toBe(OSADAcademicProgramsPage)
     expect(element.props.onOpenAddProgram).toBe(onOpenProgram)
     expect(element.props.onOpenAddCollege).toBe(onOpenCollege)
-  })
-
-  it('instantiates OSADCertificateTemplatesPage cleanly', () => {
-    const element = <OSADCertificateTemplatesPage />
-    expect(element.type).toBe(OSADCertificateTemplatesPage)
   })
 
   it('instantiates OSADStudentOrganizationsPage with organization and club create handlers', () => {

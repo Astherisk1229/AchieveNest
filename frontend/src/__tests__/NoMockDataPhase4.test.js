@@ -35,16 +35,18 @@ describe('Wiring remediation Phase 4: no mock or fabricated data on reachable sc
     expect(summary).not.toMatch(/3840|activeOrganizationsCount = 24/)
   })
 
-  it('activity log reads GET osad/audit and has no sample entries', () => {
-    const page = read('pages/osad-admin/OSADSystemAuditLogsPage.jsx')
-    expect(page).toContain('provisioningService.fetchAuditEvents')
-    expect(page).not.toMatch(/Director Vance|Maria Santos|OSAD Staff'/)
-    expect(read('services/provisioningService.js')).toContain("apiClient.get('/osad/audit'")
-  })
-
-  it('accreditation page shows no invented compliance figures', () => {
-    const page = read('pages/osad-admin/OSADAccreditationReportsPage.jsx')
-    expect(page).not.toMatch(/\b(412|380|520|96\.4)\b/)
+  it('retired OSAD report and activity modules have no UI or API entry points', () => {
+    const navigation = read('config/navigationCatalog.js')
+    const dashboard = read('pages/osad-admin/OSADDashboardPage.jsx')
+    const routes = read('../../backend/app/Config/Routes.php')
+    expect(navigation).not.toContain('osad-accreditation-reports')
+    expect(navigation).not.toContain('osad-activity-log')
+    expect(dashboard).not.toContain('OSADAccreditationReportsPage')
+    expect(dashboard).not.toContain('OSADSystemAuditLogsPage')
+    expect(fs.existsSync(new URL('../pages/osad-admin/OSADAccreditationReportsPage.jsx', import.meta.url))).toBe(false)
+    expect(fs.existsSync(new URL('../pages/osad-admin/OSADSystemAuditLogsPage.jsx', import.meta.url))).toBe(false)
+    expect(routes).not.toContain("'osad/audit'")
+    expect(read('services/provisioningService.js')).not.toContain("'/osad/audit'")
   })
 
   it('useHR no longer reads localStorage-backed HR data or a fixed score', () => {
@@ -70,13 +72,12 @@ describe('Wiring remediation Phase 4: no mock or fabricated data on reachable sc
     }
   })
 
-  it('OSAD navigation tab keys match the dashboard tabs', () => {
+  it('retired OSAD dashboard links return to overview', () => {
     const nav = read('config/navigationCatalog.js')
     const page = read('pages/osad-admin/OSADDashboardPage.jsx')
-    for (const key of ['accreditation-reports', 'system-logs']) {
-      expect(nav).toContain(`tab: '${key}'`)
-      expect(page).toContain(`activeTab === '${key}'`)
-    }
+    expect(nav).not.toContain("tab: 'accreditation-reports'")
+    expect(nav).not.toContain("tab: 'system-logs'")
+    expect(page).toContain("['certificate-templates', 'accreditation-reports', 'system-logs'].includes(rawTab)")
     expect(read('pages/osad-admin/OSADCommandCenterPage.jsx')).not.toContain('awards-criteria')
   })
 

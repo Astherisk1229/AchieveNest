@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import OrganizationController from '../controllers/OrganizationController'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getOrganizationModeratorAssignments } from '../utils/roleContext'
+import { fetchOrganization } from '../services/organizationAdminService'
 import eventService from '../services/eventService'
 import attendanceService from '../services/attendanceService'
 import {
@@ -162,6 +163,11 @@ function extract24HourClock(value) {
 }
 
 export function mapApiEventToUi(event = {}) {
+  // Older event rows may still carry the retired OSAD template field. Do not surface
+  // that field in the Organization Moderator flow; certificates are configured there.
+  const moderatorEvent = { ...event }
+  delete moderatorEvent.osad_template_id
+
   const startTimeRaw = String(
     event.start_time ?? ''
   )
@@ -194,8 +200,17 @@ export function mapApiEventToUi(event = {}) {
     ? formatDisplaySchedule(startDate, startTime, endDate, endTime)
     : (startClock && endClock ? `${startClock} - ${endClock}` : '')
 
+  let certificateConfiguration = event.certificate_configuration ?? null
+  if (typeof certificateConfiguration === 'string') {
+    try {
+      certificateConfiguration = JSON.parse(certificateConfiguration)
+    } catch {
+      certificateConfiguration = null
+    }
+  }
+
   return {
-    ...event,
+    ...moderatorEvent,
     category,
     venue_id: event.venue_id ?? null,
     venue: event.venue ?? '',
@@ -216,7 +231,9 @@ export function mapApiEventToUi(event = {}) {
     participants_count: Number(
       event.participants_count ?? 0
     ),
-    osad_template_id: event.osad_template_id ?? null,
+    certificate_configuration: certificateConfiguration && typeof certificateConfiguration === 'object'
+      ? certificateConfiguration
+      : null,
     banner_type: (
       event.banner_type
       ?? bannerTypeForCategory(category)
@@ -319,9 +336,8 @@ export function mapUiEventToApi(event = {}, isUpdate = false) {
     end_time
   }
 
-  const osadTemplateId = String(event.osad_template_id ?? '').trim()
-  if (osadTemplateId) {
-    payload.osad_template_id = osadTemplateId
+  if (event.certificate_configuration && typeof event.certificate_configuration === 'object') {
+    payload.certificate_configuration = event.certificate_configuration
   }
 
   // Canonical venue_id integration
@@ -345,14 +361,57 @@ function errorMessage(error) {
   )
 }
 
-export default function useOrganization() {
-  const [orgInfo, setOrgInfo] = useState(
-    () => OrganizationController.getOrganizationInfo()
-  )
+export default function useOrganization(currentUser = {}) {
+  const moderatorAssignments = getOrganizationModeratorAssignments(currentUser)
+  const organizationIds = [...new Set(moderatorAssignments
+    .filter(assignment => assignment.scope_type === 'organization' && assignment.scope_id)
+    .map(assignment => String(assignment.scope_id)))]
+  const organizationId = organizationIds.length === 1 ? organizationIds[0] : null
+  const [orgInfo, setOrgInfo] = useState(null)
+  const [organizationLoading, setOrganizationLoading] = useState(Boolean(organizationId))
+  const [organizationError, setOrganizationError] = useState(null)
 
   const [events, setEvents] = useState([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const [eventsError, setEventsError] = useState(null)
+
+  const loadOrganization = useCallback(async () => {
+    if (!organizationId) {
+      setOrgInfo(null)
+      setOrganizationLoading(false)
+      setOrganizationError(organizationIds.length > 1
+        ? 'More than one organization is assigned to this account. Contact OSAD to confirm the active assignment.'
+        : 'No active organization is assigned to this moderator account.')
+      return null
+    }
+
+    setOrganizationLoading(true)
+    setOrganizationError(null)
+    try {
+      const organization = await fetchOrganization(organizationId)
+      if (!organization) throw new Error('The assigned organization could not be found.')
+      const mappedOrganization = {
+        ...organization,
+        college: organization.college_name || organization.programs?.[0]?.college_name || '',
+        moderator_name: organization.current_moderator?.full_name || '',
+        academic_year: ''
+      }
+      setOrgInfo(mappedOrganization)
+      return mappedOrganization
+    } catch (error) {
+      setOrgInfo(null)
+      setOrganizationError(errorMessage(error))
+      throw error
+    } finally {
+      setOrganizationLoading(false)
+    }
+  }, [organizationId, organizationIds.length])
+
+  useEffect(() => {
+    loadOrganization().catch(error => {
+      console.error('Unable to load the assigned organization.', error)
+    })
+  }, [loadOrganization])
 
   // Canonical Attendance State (R4 Step 2C-A)
   const [attendanceSessions, setAttendanceSessions] = useState([])
@@ -362,6 +421,8 @@ export default function useOrganization() {
   const [attendanceRecords, setAttendanceRecords] = useState([])
   const [attendanceRecordsLoading, setAttendanceRecordsLoading] = useState(false)
   const [attendanceRecordsError, setAttendanceRecordsError] = useState(null)
+  const attendanceSessionsRequestRef = useRef(0)
+  const attendanceSelectionRequestRef = useRef(0)
 
   const loadEvents = useCallback(async () => {
     setEventsLoading(true)
@@ -399,22 +460,32 @@ export default function useOrganization() {
 
   // Canonical Attendance Actions (R4 Step 2C-A)
   const loadAttendanceSessions = useCallback(async (eventId) => {
+    const requestId = ++attendanceSessionsRequestRef.current
     if (!eventId) {
       setAttendanceSessions([])
+      setAttendanceSessionsError(null)
+      setAttendanceSessionsLoading(false)
       return []
     }
     setAttendanceSessionsLoading(true)
     setAttendanceSessionsError(null)
+    setAttendanceSessions([])
     try {
       const sessions = await attendanceService.listEventAttendanceSessions(eventId)
-      setAttendanceSessions(sessions)
+      if (requestId === attendanceSessionsRequestRef.current) {
+        setAttendanceSessions(sessions)
+      }
       return sessions
     } catch (error) {
       const msg = errorMessage(error)
-      setAttendanceSessionsError(msg)
+      if (requestId === attendanceSessionsRequestRef.current) {
+        setAttendanceSessionsError(msg)
+      }
       throw error
     } finally {
-      setAttendanceSessionsLoading(false)
+      if (requestId === attendanceSessionsRequestRef.current) {
+        setAttendanceSessionsLoading(false)
+      }
     }
   }, [])
 
@@ -425,9 +496,12 @@ export default function useOrganization() {
   }, [loadAttendanceSessions])
 
   const selectAttendanceSession = useCallback(async (sessionId) => {
+    const requestId = ++attendanceSelectionRequestRef.current
     if (!sessionId) {
       setActiveAttendanceSession(null)
       setAttendanceRecords([])
+      setAttendanceRecordsError(null)
+      setAttendanceRecordsLoading(false)
       return null
     }
     setAttendanceRecordsLoading(true)
@@ -437,15 +511,21 @@ export default function useOrganization() {
         attendanceService.getAttendanceSession(sessionId),
         attendanceService.listAttendanceSessionRecords(sessionId)
       ])
-      setActiveAttendanceSession(session)
-      setAttendanceRecords(records)
+      if (requestId === attendanceSelectionRequestRef.current) {
+        setActiveAttendanceSession(session)
+        setAttendanceRecords(records)
+      }
       return { session, records }
     } catch (error) {
       const msg = errorMessage(error)
-      setAttendanceRecordsError(msg)
+      if (requestId === attendanceSelectionRequestRef.current) {
+        setAttendanceRecordsError(msg)
+      }
       throw error
     } finally {
-      setAttendanceRecordsLoading(false)
+      if (requestId === attendanceSelectionRequestRef.current) {
+        setAttendanceRecordsLoading(false)
+      }
     }
   }, [])
 
@@ -464,22 +544,31 @@ export default function useOrganization() {
   }, [loadAttendanceSessions])
 
   const loadAttendanceRecords = useCallback(async (sessionId) => {
+    const requestId = ++attendanceSelectionRequestRef.current
     if (!sessionId) {
       setAttendanceRecords([])
+      setAttendanceRecordsError(null)
+      setAttendanceRecordsLoading(false)
       return []
     }
     setAttendanceRecordsLoading(true)
     setAttendanceRecordsError(null)
     try {
       const records = await attendanceService.listAttendanceSessionRecords(sessionId)
-      setAttendanceRecords(records)
+      if (requestId === attendanceSelectionRequestRef.current) {
+        setAttendanceRecords(records)
+      }
       return records
     } catch (error) {
       const msg = errorMessage(error)
-      setAttendanceRecordsError(msg)
+      if (requestId === attendanceSelectionRequestRef.current) {
+        setAttendanceRecordsError(msg)
+      }
       throw error
     } finally {
-      setAttendanceRecordsLoading(false)
+      if (requestId === attendanceSelectionRequestRef.current) {
+        setAttendanceRecordsLoading(false)
+      }
     }
   }, [])
 
@@ -512,12 +601,11 @@ export default function useOrganization() {
   }), [events, orgInfo])
 
   const refreshData = useCallback(async () => {
-    setOrgInfo(
-      OrganizationController.getOrganizationInfo()
-    )
-
-    return loadEvents()
-  }, [loadEvents])
+    const results = await Promise.allSettled([loadOrganization(), loadEvents()])
+    if (results[0].status === 'rejected') throw results[0].reason
+    if (results[1].status === 'rejected') throw results[1].reason
+    return results[1].value
+  }, [loadEvents, loadOrganization])
 
   const createEvent = useCallback(
     async (eventData) => {
@@ -529,7 +617,11 @@ export default function useOrganization() {
         payload
       )
 
-      await loadEvents()
+      // The event is durable once POST resolves. A transient list refresh must
+      // not keep the create modal open and make users think creation failed.
+      await loadEvents().catch((error) => {
+        console.error('Event was created, but the event list could not refresh.', error)
+      })
 
       return result
     },
@@ -548,7 +640,9 @@ export default function useOrganization() {
         payload
       )
 
-      await loadEvents()
+      await loadEvents().catch((error) => {
+        console.error('Event was updated, but the event list could not refresh.', error)
+      })
 
       return result
     },
@@ -577,18 +671,10 @@ export default function useOrganization() {
     [events]
   )
 
-  const autoMatchOSADTemplate = useCallback(
-    (category, title) => (
-      OrganizationController.autoMatchOSADTemplate(
-        category,
-        title
-      )
-    ),
-    []
-  )
-
   return {
     orgInfo,
+    organizationLoading,
+    organizationError,
     events,
     metrics,
     eventsLoading,
@@ -611,7 +697,6 @@ export default function useOrganization() {
     updateEvent,
     cancelEvent,
     getEventDetails,
-    autoMatchOSADTemplate,
     refreshData
   }
 }

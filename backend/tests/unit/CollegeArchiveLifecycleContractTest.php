@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 final class CollegeArchiveLifecycleContractTest extends TestCase
 {
-    public function testArchiveRouteRequiresOsadAuthorityAndDelegatesToFocusedLifecycleMethod(): void
+    public function testArchiveRouteRequiresHrAuthorityAndDelegatesToFocusedLifecycleMethod(): void
     {
         $root = dirname(__DIR__, 2);
         $routes = file_get_contents($root . '/app/Config/Routes.php');
@@ -14,7 +14,8 @@ final class CollegeArchiveLifecycleContractTest extends TestCase
 
         self::assertStringContainsString("patch('osad/colleges/(:segment)/status'", $routes);
         self::assertStringContainsString('public function updateStatus(string $id)', $controller);
-        self::assertStringContainsString('checkOSADAuthorization($actor)', $controller);
+        self::assertStringContainsString('$this->canManageAcademicStructure($actor)', $controller);
+        self::assertStringContainsString('Only HR administrators may manage academic structure.', $controller);
         self::assertStringContainsString('updateCollegeStatus($id', $controller);
     }
 

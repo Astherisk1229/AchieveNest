@@ -142,7 +142,7 @@ class VerifyAwardsPhase16 extends BaseCommand
             $reuseOk = count($first) === 1 && count($second) === 1 && $first[0]['portfolio_record_id'] === $second[0]['portfolio_record_id'];
         }
         $test('TRACE-001', 'One evidence object maps traceably to multiple legitimate Awards', $reuseOk);
-        $test('PATH-001', 'Dean nominations remain Award + Cycle scoped with no score columns', $db->fieldExists('award_definition_id', 'dean_student_nominations') && $db->fieldExists('cycle_id', 'dean_student_nominations') && ! $db->fieldExists('raw_score', 'dean_student_nominations'));
+        $test('PATH-001', 'Interview eligibility is linked to portfolio evaluations', $db->fieldExists('evaluation_id', 'award_interview_eligibilities') && ! $db->fieldExists('dean_nomination_id', 'award_interview_eligibilities'));
         $test('FINAL-001', 'Potential-candidate table contains no automatic final-awardee field', ! $db->fieldExists('is_awardee', 'award_interview_eligibilities'));
 
         CLI::write(str_repeat('=', 104), 'cyan');

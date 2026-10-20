@@ -85,13 +85,13 @@ class VerifyAwardsPhaseG extends BaseCommand
         $db->table('award_criteria')->where('id', $critSample['id'])->update(['is_portfolio_computable' => 1]);
         $summaryService->buildEvaluationSummary($cycle['id'], $award['id'], $studentA['id']);
 
-        // 6. DEAN-001: Dean nomination summary presentation
+        // 6. PATH-001: Portfolio evaluation summary exposes its candidate pathway
         $studentB = $db->table('profiles')->where('account_type', 'student')->where('status', 'active')->where('id !=', $studentA['id'])->get()->getRowArray();
         if ($studentB !== null) {
             $summaryB = $summaryService->buildEvaluationSummary($cycle['id'], $award['id'], $studentB['id']);
-            $runTest('DEAN-001', 'Candidate pathway correctly reflected in evaluation summary', isset($summaryB['candidate_intake']['candidate_pathway']));
+            $runTest('PATH-001', 'Candidate pathway is portfolio-based in evaluation summary', ($summaryB['candidate_intake']['candidate_pathway'] ?? null) === 'automatic_portfolio');
         } else {
-            $runTest('DEAN-001', 'Candidate pathway correctly reflected in evaluation summary', true);
+            $runTest('PATH-001', 'Candidate pathway is portfolio-based in evaluation summary', true);
         }
 
         // 7. REPRO-001: Snapshot Persistence in Database

@@ -54,7 +54,6 @@ class VerifyAwardsPhaseJ extends BaseCommand
             'student_award_criterion_scores',
             'student_award_score_evidence',
             'award_interview_eligibilities',
-            'dean_student_nominations',
             'award_student_evaluation_summaries',
             'award_candidate_manual_decisions',
             'audit_logs',

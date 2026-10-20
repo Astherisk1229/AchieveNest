@@ -311,35 +311,15 @@ class LocalAuthService
 
         $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
 
-        // 2. Update profiles table
-        $db->table('profiles')
-            ->where('id', $profileId)
+        // 2. Update the canonical credential row. Password hashes are not stored on profiles.
+        $db->table('local_auth_credentials')
+            ->where('profile_id', $profileId)
             ->update([
-                'password_hash' => $newHash,
-                'updated_at'    => date('Y-m-d H:i:s.u'),
-            ]);
-
-        // 3. Update local_auth_credentials table (canonical authority for must_change_password)
-        if ($credRow !== null) {
-            $db->table('local_auth_credentials')
-                ->where('profile_id', $profileId)
-                ->update([
-                    'password_hash'        => $newHash,
-                    'must_change_password' => 0,
-                    'password_changed_at'  => date('Y-m-d H:i:s.u'),
-                    'updated_at'           => date('Y-m-d H:i:s.u'),
-                ]);
-        } else {
-            $db->table('local_auth_credentials')->insert([
-                'profile_id'           => $profileId,
                 'password_hash'        => $newHash,
                 'must_change_password' => 0,
                 'password_changed_at'  => date('Y-m-d H:i:s.u'),
-                'status'               => 'active',
-                'created_at'           => date('Y-m-d H:i:s.u'),
                 'updated_at'           => date('Y-m-d H:i:s.u'),
             ]);
-        }
 
         // 4. Revoke prior active sessions
         $this->tokenService->revokeAllSessionsForProfile($profileId, 'password_change');
@@ -473,13 +453,6 @@ class LocalAuthService
 
         $temporaryPassword = ValidationHelper::generateTemporaryPassword();
         $newHash = password_hash($temporaryPassword, PASSWORD_DEFAULT);
-
-        $db->table('profiles')
-            ->where('id', $targetProfileId)
-            ->update([
-                'password_hash' => $newHash,
-                'updated_at'    => date('Y-m-d H:i:s.u'),
-            ]);
 
         if ($credRow !== null) {
             $db->table('local_auth_credentials')

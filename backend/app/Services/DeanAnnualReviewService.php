@@ -65,7 +65,7 @@ class DeanAnnualReviewService
     {
         $personId=(string)($payload['personnel_profile_id']??'');
         if($personId==='') throw new InvalidArgumentException('VALIDATION_ERROR: personnel_profile_id is required.');
-        $period=$this->period($payload); $this->assertOpen($period);
+        $period=$this->period($payload); RankingCycleOperationalAvailability::assertEnabled($this->db, (string) $period['id']); $this->assertOpen($period);
         $auth=$this->validateDeanAuthorization($deanId,$personId);
         $status=strtolower((string)($payload['review_status']??'draft'));
         if(!in_array($status,['draft','finalized'],true)) throw new InvalidArgumentException('INVALID_REVIEW_STATUS: review_status must be draft or finalized.');
@@ -90,7 +90,7 @@ class DeanAnnualReviewService
         if(!empty($old['superseded_at'])) throw new RuntimeException('INVALID_REVIEW_TRANSITION: This review was already superseded.');
         if(empty($old['annual_rating'])) throw new RuntimeException('LEGACY_REVIEW_READ_ONLY: Legacy binary annual-review records cannot be superseded into ratings.');
         if(($old['review_status']??'')!=='finalized') throw new RuntimeException('INVALID_REVIEW_TRANSITION: Only finalized reviews use supersession.');
-        $period=$this->period(['evaluation_period_id'=>$old['evaluation_period_id']]); $this->assertOpen($period);
+        $period=$this->period(['evaluation_period_id'=>$old['evaluation_period_id']]); RankingCycleOperationalAvailability::assertEnabled($this->db, (string) $period['id']); $this->assertOpen($period);
         $auth=$this->validateDeanAuthorization($deanId,$old['personnel_profile_id']);
         $reason=trim((string)($payload['correction_reason']??''));
         if($reason==='') throw new InvalidArgumentException('CORRECTION_REASON_REQUIRED: Explain why this finalized review must be corrected.');

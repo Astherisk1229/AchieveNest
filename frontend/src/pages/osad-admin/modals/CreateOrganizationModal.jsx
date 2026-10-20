@@ -34,7 +34,7 @@ export default function CreateOrganizationModal({
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [category, setCategory] = useState('academic_college')
-  const [scope, setScope] = useState('university')
+  const [scope, setScope] = useState('college')
   const [collegeId, setCollegeId] = useState(colleges[0]?.id || '')
   const [selectedProgramIds, setSelectedProgramIds] = useState([])
   const [logoFile, setLogoFile] = useState(null)
@@ -61,7 +61,7 @@ export default function CreateOrganizationModal({
     setName('')
     setCode('')
     setCategory('academic_college')
-    setScope('university')
+    setScope('college')
     setCollegeId(colleges[0]?.id || '')
     setSelectedProgramIds([])
     setLogoFile(null)
@@ -72,8 +72,8 @@ export default function CreateOrganizationModal({
   const isDirty = () => (
     name.trim() !== '' ||
     code.trim() !== '' ||
-    category !== 'academic_college' ||
-    scope !== 'university' ||
+      category !== 'academic_college' ||
+    scope !== 'college' ||
     (Boolean(colleges[0]?.id) && collegeId !== colleges[0]?.id) ||
     selectedProgramIds.length > 0 ||
     Boolean(logoFile)
@@ -299,7 +299,9 @@ export default function CreateOrganizationModal({
               </div>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  setCategory(e.target.value)
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition cursor-pointer"
               >
                 {ORGANIZATION_CATEGORIES.map((cat) => (

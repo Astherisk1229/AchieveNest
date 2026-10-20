@@ -7,9 +7,9 @@ const area = { id: 'area-a', area_code: 'A', name: 'Professional Development', c
 
 describe('CriteriaHierarchyBuilder', () => {
   it('shows existing categories collapsed with the configured cut-off and add action', () => {
-    const tree = { areas: [{ ...area, categories: [{ ...createCategory(area, 'category-a'), name: 'Training', max_points: 40, subcategories: [createSubcategory({ id: 'category-a' }, 'sub-a')] }] }] }
+    const tree = { areas: [{ ...area, max_points: 40, categories: [{ ...createCategory(area, 'category-a'), name: 'Training', max_points: 40, subcategories: [createSubcategory({ id: 'category-a' }, 'sub-a')] }] }] }
     const markup = renderToStaticMarkup(<CriteriaHierarchyBuilder tree={tree} onChange={vi.fn()} />)
-    expect(markup).toContain('Cut-off: 40')
+    expect(markup).toContain('Maximum 40 pts')
     expect(markup).toContain('Add Category')
     expect(markup).not.toContain('Category Name')
     expect(markup).not.toContain('Level Name')

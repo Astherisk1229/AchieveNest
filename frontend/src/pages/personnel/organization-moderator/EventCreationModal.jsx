@@ -13,9 +13,9 @@ import {
   AlertCircle,
   Check
 } from 'lucide-react'
-import OrganizationController from '../../../controllers/OrganizationController'
-import SignatureVault, { parseSignatoryInfo } from '../../../utils/signatureVault'
+import SignatureVault, { cleanOrganizationSignatoryImage, cleanOrganizationSignatoryName, parseSignatoryInfo } from '../../../utils/signatureVault'
 import eventService from '../../../services/eventService'
+import { portfolioService } from '../../../services/portfolioService'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Calendar } from '../../../components/ui/calendar'
 import {
@@ -32,14 +32,6 @@ import {
   parseTo24Hour,
   validateSchedule
 } from '../../../lib/eventSchedule'
-
-const OSAD_TEMPLATES = [
-  { code: 'OSAD-TPL-01', name: 'Official NDMU Certificate of Participation' },
-  { code: 'OSAD-TPL-02', name: 'Certificate of Leadership & Merit' },
-  { code: 'OSAD-TPL-03', name: 'Certificate of Workshop Completion' },
-  { code: 'OSAD-TPL-04', name: 'Excellence & Special Distinction Award' },
-  { code: 'OSAD-TPL-05', name: 'NDMU Sports & Athletics Accreditation Certificate' }
-]
 
 const TIME_OPTIONS = [
   '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
@@ -195,7 +187,7 @@ function DatePickerField({ value, onChange, placeholder = 'Select date', disable
   )
 }
 
-export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onUpdateEvent, editingEvent }) {
+export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onUpdateEvent, editingEvent, organizationName = '', moderatorName = '' }) {
   const [activeStep, setActiveStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -207,6 +199,8 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
   const [venues, setVenues] = useState([])
   const [venuesLoading, setVenuesLoading] = useState(false)
   const [venuesError, setVenuesError] = useState(null)
+  const [portfolioCategories, setPortfolioCategories] = useState([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
 
   const defaultVault = SignatureVault.getSignatures()
 
@@ -220,8 +214,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
     venue_id: '',
     historicalVenue: '',
     description: '',
-    osad_template_id: 'OSAD-TPL-03',
-    signatory_1: defaultVault.signatory_1,
+    signatory_1: moderatorName ? `${moderatorName} (Organization Moderator)` : defaultVault.signatory_1,
     signatory_2: defaultVault.signatory_2,
     signatory_1_img: defaultVault.signatory_1_img,
     signatory_2_img: defaultVault.signatory_2_img
@@ -245,11 +238,16 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
   useEffect(() => {
     if (isOpen) {
       loadVenues()
+      setCategoriesLoading(true)
+      portfolioService.fetchCategories()
+        .then(rows => setPortfolioCategories(Array.isArray(rows) ? rows : []))
+        .catch(error => {
+          console.error('Failed to load portfolio categories:', error)
+          setPortfolioCategories([])
+        })
+        .finally(() => setCategoriesLoading(false))
     }
   }, [isOpen, loadVenues])
-
-  // Smart Auto-Matching template result
-  const autoMatch = OrganizationController.autoMatchOSADTemplate(formData.category, formData.title)
 
   useEffect(() => {
     const vault = SignatureVault.getSignatures()
@@ -276,13 +274,14 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
         venue_id: editingEvent.venue_id || '',
         historicalVenue: (!editingEvent.venue_id && editingEvent.venue) ? editingEvent.venue : '',
         description: editingEvent.description || '',
+        portfolio_category_id: editingEvent.portfolio_category_id || '',
+        portfolio_subcategory_id: editingEvent.portfolio_subcategory_id || '',
         attendance_start_time: editingEvent.attendance_start_time || '08:30',
         attendance_end_time: editingEvent.attendance_end_time || '09:30',
-        osad_template_id: editingEvent.osad_template_id || OrganizationController.autoMatchOSADTemplate(editingEvent.category || 'Workshop', editingEvent.title || '').id,
-        signatory_1: editingEvent.signatory_1 || vault.signatory_1,
-        signatory_2: editingEvent.signatory_2 || vault.signatory_2,
-        signatory_1_img: editingEvent.signatory_1_img || vault.signatory_1_img,
-        signatory_2_img: editingEvent.signatory_2_img || vault.signatory_2_img
+        signatory_1: cleanOrganizationSignatoryName(editingEvent.certificate_configuration?.signatory_1) || cleanOrganizationSignatoryName(editingEvent.signatory_1) || (moderatorName ? `${moderatorName} (Organization Moderator)` : vault.signatory_1),
+        signatory_2: cleanOrganizationSignatoryName(editingEvent.certificate_configuration?.signatory_2) || cleanOrganizationSignatoryName(editingEvent.signatory_2) || vault.signatory_2,
+        signatory_1_img: cleanOrganizationSignatoryImage(editingEvent.certificate_configuration?.signatory_1_img || editingEvent.signatory_1_img) || vault.signatory_1_img,
+        signatory_2_img: cleanOrganizationSignatoryImage(editingEvent.certificate_configuration?.signatory_2_img || editingEvent.signatory_2_img) || vault.signatory_2_img
       })
       setEndScheduleTouched(true)
     } else {
@@ -297,10 +296,11 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
         venue_id: '',
         historicalVenue: '',
         description: '',
+        portfolio_category_id: '',
+        portfolio_subcategory_id: '',
         attendance_start_time: '08:30',
         attendance_end_time: '09:30',
-        osad_template_id: OrganizationController.autoMatchOSADTemplate('Workshop', '').id,
-        signatory_1: vault.signatory_1,
+        signatory_1: moderatorName ? `${moderatorName} (Organization Moderator)` : vault.signatory_1,
         signatory_2: vault.signatory_2,
         signatory_1_img: vault.signatory_1_img,
         signatory_2_img: vault.signatory_2_img
@@ -308,10 +308,19 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
       setEndScheduleTouched(false)
     }
     setActiveStep(1)
-  }, [editingEvent, isOpen])
+  }, [editingEvent, isOpen, moderatorName])
 
   const handleSigImageUpload = (sigKey, file) => {
     if (!file) return
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      setSubmitError('Upload a PNG or JPEG signature image.')
+      return
+    }
+    if (file.size > 524288) {
+      setSubmitError('Signature images must be 512 KiB or smaller.')
+      return
+    }
+    setSubmitError(null)
     const reader = new FileReader()
     reader.onload = (e) => {
       const dataUri = e.target.result
@@ -326,21 +335,20 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
 
   const handleCategoryChange = (e) => {
     const newCategory = e.target.value
-    const matched = OrganizationController.autoMatchOSADTemplate(newCategory, formData.title)
     setFormData(prev => ({
       ...prev,
-      category: newCategory,
-      osad_template_id: matched.id
+      category: newCategory
     }))
   }
 
+  const selectedPortfolioCategory = portfolioCategories.find(category => category.id === formData.portfolio_category_id)
+  const availablePortfolioSubcategories = selectedPortfolioCategory?.subcategories || []
+
   const handleTitleChange = (e) => {
     const newTitle = e.target.value
-    const matched = OrganizationController.autoMatchOSADTemplate(formData.category, newTitle)
     setFormData(prev => ({
       ...prev,
-      title: newTitle,
-      osad_template_id: matched.id
+      title: newTitle
     }))
     if (fieldErrors.title) {
       setFieldErrors(prev => ({ ...prev, title: null }))
@@ -531,7 +539,15 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
       endTime: formData.endTime,
       date: formData.startDate, // backwards compatibility
       description: formData.description.trim() || null,
-      osad_template_id: formData.osad_template_id || autoMatch.id
+      portfolio_category_id: formData.portfolio_category_id || null,
+      portfolio_subcategory_id: formData.portfolio_subcategory_id || null,
+      certificate_configuration: {
+        issuer_name: organizationName.trim(),
+        signatory_1: formData.signatory_1.trim(),
+        signatory_2: formData.signatory_2.trim(),
+        signatory_1_img: formData.signatory_1_img || null,
+        signatory_2_img: formData.signatory_2_img || null
+      }
     }
 
     // Include venue_id if selected
@@ -576,7 +592,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
   const displayVenueName = selectedVenueObj ? selectedVenueObj.name : (formData.historicalVenue || 'Not selected')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div data-org-moderator-surface className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Modal Header */}
@@ -709,6 +725,41 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#16834a] font-medium"
                   />
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Accomplishment Classification <span className="font-medium normal-case text-slate-500">(Optional)</span></p>
+                  <p className="mt-1 text-xs text-slate-500">Choose the achievement category that best describes this event.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <label className="text-xs font-semibold text-slate-600">
+                      Category
+                      <select
+                        value={formData.portfolio_category_id}
+                        onChange={event => setFormData(previous => ({ ...previous, portfolio_category_id: event.target.value, portfolio_subcategory_id: '' }))}
+                        disabled={categoriesLoading}
+                        className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"
+                      >
+                        <option value="">No category / Not applicable</option>
+                        {formData.portfolio_category_id && !selectedPortfolioCategory && <option value={formData.portfolio_category_id}>Previously selected category (inactive)</option>}
+                        {portfolioCategories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs font-semibold text-slate-600">
+                      Subcategory
+                      <select
+                        value={formData.portfolio_subcategory_id}
+                        onChange={event => setFormData(previous => ({ ...previous, portfolio_subcategory_id: event.target.value }))}
+                        disabled={!formData.portfolio_category_id || categoriesLoading}
+                        className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        <option value="">No subcategory / Not applicable</option>
+                        {formData.portfolio_subcategory_id && !availablePortfolioSubcategories.some(item => item.id === formData.portfolio_subcategory_id) && <option value={formData.portfolio_subcategory_id}>Previously selected subcategory (inactive)</option>}
+                        {availablePortfolioSubcategories.map(subcategory => <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>)}
+                      </select>
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -897,48 +948,16 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
             </div>
           )}
 
-          {/* STEP 2: OSAD CERTIFICATE & SIDE-BY-SIDE LIVE PREVIEW */}
+          {/* STEP 2: ORGANIZATION CERTIFICATE & SIDE-BY-SIDE LIVE PREVIEW */}
           {activeStep === 2 && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-200">
               
               {/* Left Column: Form Inputs (5 cols) */}
               <div className="lg:col-span-5 space-y-4">
                 
-                {/* Smart Auto-Matching Template Box */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#064e2b] to-slate-900 text-white space-y-2.5 shadow-md">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-[#245F42] border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-emerald-400" />
-                      ⚡ Smart Auto-Matched OSAD Template
-                    </span>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-extrabold text-white">{autoMatch.name}</h4>
-                    <p className="text-[11px] text-[#245F42]/80 mt-0.5">{autoMatch.description}</p>
-                  </div>
-
-                  <div className="text-[10px] text-[#245F42]/90 font-mono bg-emerald-950/60 p-2 rounded-xl border border-emerald-800/40">
-                    {autoMatch.reason}
-                  </div>
-                </div>
-
-                {/* Template Selector Dropdown */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    OSAD Certificate Template
-                  </label>
-                  <select
-                    value={formData.osad_template_id}
-                    onChange={(e) => setFormData({ ...formData, osad_template_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#16834a] font-medium"
-                  >
-                    {OSAD_TEMPLATES.map(tpl => (
-                      <option key={tpl.code} value={tpl.code}>
-                        [{tpl.code}] {tpl.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 text-slate-800 space-y-2 shadow-sm">
+                  <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-800">Organization-issued certificate</p>
+                  <p className="text-[11px] leading-relaxed text-slate-700">This participation certificate is issued by {organizationName || 'your organization'} to verified attendees after the event closes.</p>
                 </div>
 
                 {/* Signatory Inputs & Digital Signature Upload */}
@@ -959,7 +978,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                         <span>Upload Signature PNG</span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg"
                           onChange={(e) => handleSigImageUpload('signatory_1_img', e.target.files[0])}
                           className="hidden"
                         />
@@ -984,7 +1003,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                         <span>Upload Signature PNG</span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg"
                           onChange={(e) => handleSigImageUpload('signatory_2_img', e.target.files[0])}
                           className="hidden"
                         />
@@ -1010,10 +1029,10 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                 </div>
 
                 {/* Embedded Certificate Rendered Card */}
-                <div className="p-6 bg-amber-50/30 text-center space-y-4 relative overflow-hidden border-4 border-double border-amber-800/30 rounded-2xl shadow-sm">
+                <div className="p-6 bg-[#fffefa] text-center space-y-5 relative overflow-hidden border-[3px] border-double border-amber-800/35 rounded-2xl shadow-sm">
                   
                   {/* Watermark Seal */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.035] pointer-events-none">
                     <div className="w-60 h-60 rounded-full border-8 border-slate-900 flex items-center justify-center">
                       <span className="text-3xl font-extrabold font-serif">NDMU</span>
                     </div>
@@ -1021,71 +1040,62 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
 
                   {/* Certificate Header */}
                   <div className="space-y-1 relative z-10">
-                    <p className="text-[10px] font-extrabold tracking-widest uppercase text-amber-900">NOTRE DAME OF MARBEL UNIVERSITY</p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Office of Student Affairs & Services (OSAD)</p>
-                    <h2 className="text-lg font-serif font-extrabold text-slate-900 pt-1 tracking-wide">
-                      {formData.osad_template_id === 'OSAD-TPL-03' ? 'CERTIFICATE OF WORKSHOP COMPLETION' :
-                       formData.osad_template_id === 'OSAD-TPL-02' ? 'CERTIFICATE OF LEADERSHIP & MERIT' :
-                       formData.osad_template_id === 'OSAD-TPL-04' ? 'EXCELLENCE & SPECIAL DISTINCTION AWARD' :
-                       formData.osad_template_id === 'OSAD-TPL-05' ? 'SPORTS & ATHLETICS ACCREDITATION CERTIFICATE' :
-                       'CERTIFICATE OF PARTICIPATION'}
-                    </h2>
+                    <p className="text-[10px] font-extrabold tracking-widest uppercase text-amber-900">{organizationName || 'Student Organization'}</p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Notre Dame of Marbel University</p>
+                    <h2 className="text-lg font-serif font-extrabold text-slate-900 pt-1 tracking-wide">CERTIFICATE OF PARTICIPATION</h2>
                   </div>
 
                   <div className="space-y-1 relative z-10">
                     <p className="text-[10px] text-slate-500 italic">This official digital certificate is proudly presented to</p>
                     <h3 className="text-base font-extrabold text-[#16834a] underline decoration-amber-500 decoration-2 underline-offset-4">
-                      [STUDENT PARTICIPANT FULL NAME]
+                      PARTICIPANT NAME
                     </h3>
+                    <p className="text-[9px] font-medium text-slate-500">Personalized when the certificate is issued</p>
                   </div>
 
                   <div className="max-w-xs mx-auto space-y-1 relative z-10 text-[11px] text-slate-700 leading-snug">
                     <p>
                       For active attendance and successful completion of:
                     </p>
-                    <p className="font-extrabold text-slate-900 text-xs">{formData.title || 'Computer Society Tech Summit 2026'}</p>
+                    <p className="font-extrabold text-slate-900 text-xs">{formData.title || 'Event title'}</p>
                     <p className="text-slate-500 text-[10px]">
-                      Held on <span className="font-bold text-slate-800">{formData.startDate || formData.date || '2026-08-15'}</span> at <span className="font-bold text-slate-800">{displayVenueName}</span>.
+                      Held on <span className="font-bold text-slate-800">{formData.startDate || formData.date || 'Event date'}</span> at <span className="font-bold text-slate-800">{displayVenueName || 'Event venue'}.</span>
                     </p>
                   </div>
 
                   {/* Rendered Digital Signatures */}
-                  <div className="pt-4 grid grid-cols-2 gap-6 border-t border-amber-900/20 max-w-md mx-auto relative z-10 text-[10px]">
+                  <div className="pt-5 grid grid-cols-2 gap-8 border-t border-amber-900/20 max-w-md mx-auto relative z-10 text-[10px]">
                     {(() => {
-                      const sig1 = parseSignatoryInfo(formData.signatory_1, 'Dr. Ana Reyes', 'Club Moderator')
-                      const sig2 = parseSignatoryInfo(formData.signatory_2, 'Prof. Juan Dela Cruz', 'OSAD Director')
+                      const sig1 = parseSignatoryInfo(formData.signatory_1, '', 'Organization Moderator')
+                      const sig2 = parseSignatoryInfo(formData.signatory_2, '', 'Authorized Signatory')
 
                       return (
                         <>
                           <div className="flex flex-col items-center justify-end text-center relative">
-                            <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                            <div className="h-8 flex items-end justify-center z-10 pointer-events-none">
                               {formData.signatory_1_img ? (
                                 <img src={formData.signatory_1_img} alt="Signatory 1" className="h-9 max-w-[130px] object-contain" />
-                              ) : (
-                                <span className="font-serif italic text-emerald-800 font-bold text-xs">A. Reyes</span>
-                              )}
+                              ) : null}
                             </div>
+                            <div className="w-[88%] border-t border-slate-700 mt-1 mb-1.5"></div>
                             <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
-                              {sig1.name}
+                              {sig1.name || 'Organization moderator'}
                             </p>
-                            <div className="w-full border-t border-slate-700 my-0.5"></div>
                             <p className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wider truncate max-w-full">
                               {sig1.title}
                             </p>
                           </div>
 
                           <div className="flex flex-col items-center justify-end text-center relative">
-                            <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                            <div className="h-8 flex items-end justify-center z-10 pointer-events-none">
                               {formData.signatory_2_img ? (
                                 <img src={formData.signatory_2_img} alt="Signatory 2" className="h-9 max-w-[130px] object-contain" />
-                              ) : (
-                                <span className="font-serif italic text-amber-900 font-bold text-xs">J. Dela Cruz</span>
-                              )}
+                              ) : null}
                             </div>
+                            <div className="w-[88%] border-t border-slate-700 mt-1 mb-1.5"></div>
                             <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
-                              {sig2.name}
+                              {sig2.name || 'Authorized signatory'}
                             </p>
-                            <div className="w-full border-t border-slate-700 my-0.5"></div>
                             <p className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wider truncate max-w-full">
                               {sig2.title}
                             </p>
@@ -1095,8 +1105,8 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     })()}
                   </div>
 
-                  <div className="text-[9px] font-mono text-slate-400 pt-1">
-                    Verification Code: NDMU-OSAD-2026-X8921 • OSAD Seal Verified
+                  <div className="text-[9px] font-medium text-slate-500 pt-1">
+                    Verification code assigned after certificate issuance
                   </div>
 
                 </div>

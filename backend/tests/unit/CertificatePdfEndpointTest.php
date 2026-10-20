@@ -278,7 +278,7 @@ final class CertificatePdfEndpointTest extends CIUnitTestCase
         self::assertSame('FORBIDDEN', $body['error']['code'] ?? null);
     }
 
-    public function testOsadStaffCanDownloadAnyIssuedCertificate(): void
+    public function testOsadStaffCannotDownloadIssuedCertificates(): void
     {
         $db = \Config\Database::connect('default');
         $ctx = $this->prepareFixture($db);
@@ -292,8 +292,9 @@ final class CertificatePdfEndpointTest extends CIUnitTestCase
         $controller = $this->createController($db, $actor);
         $res = $controller->pdf($ctx['cert_id']);
 
-        self::assertSame(200, $res->getStatusCode());
-        self::assertStringStartsWith('%PDF-', $res->getBody());
+        self::assertSame(403, $res->getStatusCode());
+        $body = json_decode($res->getBody(), true);
+        self::assertSame('FORBIDDEN', $body['error']['code'] ?? null);
     }
 
     public function testOrganizationModeratorCanDownloadScopedCertificate(): void

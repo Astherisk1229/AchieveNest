@@ -18,8 +18,6 @@ import OSADCoordinatorManagerView from '../OSADCoordinatorManagerView'
 import OSADCollegeDetailsView from '../OSADCollegeDetailsView'
 import OSADStudentOrganizationsPage from '../OSADStudentOrganizationsPage'
 import OSADOrganizationDetailsView from '../OSADOrganizationDetailsView'
-import OSADAccreditationReportsPage from '../OSADAccreditationReportsPage'
-import OSADSystemAuditLogsPage from '../OSADSystemAuditLogsPage'
 import OSADAwardsAndCriteriaPage from '../OSADAwardsAndCriteriaPage'
 import OSADStudentsForEvaluationView from '../OSADStudentsForEvaluationView'
 import OSADPotentialCandidatesView from '../OSADPotentialCandidatesView'
@@ -160,25 +158,6 @@ describe('Plan 06 Phase 7 — OSAD Page Header Standardization Suite', () => {
 
     expect(element.type).toBe(OSADOrganizationDetailsView)
     expect(element.props.organizationId).toBe('org-cs')
-  })
-
-  it('instantiates OSADAccreditationReportsPage with semantic H1 header', () => {
-    const element = (
-      <OSADAccreditationReportsPage accreditationReports={[]} />
-    )
-
-    expect(element.type).toBe(OSADAccreditationReportsPage)
-    expect(element.props.accreditationReports).toHaveLength(0)
-  })
-
-  it('instantiates OSADSystemAuditLogsPage with semantic H1 header and refresh CTA', () => {
-    const refreshAuditLogs = vi.fn()
-    const element = (
-      <OSADSystemAuditLogsPage auditLogs={[]} refreshAuditLogs={refreshAuditLogs} />
-    )
-
-    expect(element.type).toBe(OSADSystemAuditLogsPage)
-    expect(element.props.refreshAuditLogs).toBe(refreshAuditLogs)
   })
 
   it('instantiates OSADAwardsAndCriteriaPage and sub-views cleanly', () => {

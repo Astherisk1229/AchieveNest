@@ -21,6 +21,24 @@ class RankingCycleController extends Controller
     public function update(string $id): mixed { if (($a=$this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $a; return $this->run(fn()=>$this->respond(['data'=>['cycle'=>$this->cycles->update($id,$this->body(),$a['profile']['id'])]])); }
     public function addTracks(string $id): mixed { if (($a=$this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $a; return $this->run(fn()=>$this->respond(['data'=>['cycle'=>$this->cycles->addTracks($id,$this->body(),$a['profile']['id'],$this->requestKey())]])); }
     public function schedule(string $id): mixed { if (($a=$this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $a; return $this->run(fn()=>$this->respond(['data'=>['cycle'=>$this->cycles->updateSchedule($id,$this->body(),$a['profile']['id'])]])); }
+    public function operationalAvailability(string $id): mixed
+    {
+        $actor = $this->hr();
+        if ($actor instanceof \CodeIgniter\HTTP\ResponseInterface) return $actor;
+
+        $body = $this->body();
+        if (! array_key_exists('enabled', $body) || ! is_bool($body['enabled'])
+            || ! array_key_exists('expected_enabled', $body) || ! is_bool($body['expected_enabled'])) {
+            return $this->respond(['error' => ['code' => 'INVALID_AVAILABILITY', 'message' => 'Provide the current and requested availability states.']], 422);
+        }
+
+        return $this->run(fn() => $this->respond(['data' => ['cycle' => $this->cycles->setOperationalAvailability(
+            $id,
+            $body['expected_enabled'],
+            $body['enabled'],
+            $actor['profile']['id'],
+        )]]));
+    }
     public function coverage(string $id): mixed { if (($a=$this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $a; return $this->run(fn()=>$this->respond(['data'=>['cycle'=>$this->cycles->updateCoverage($id,$this->body(),$a['profile']['id'])]])); }
     public function archive(string $id): mixed { if (($a=$this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $a; return $this->run(fn()=>$this->respond(['data'=>['cycle'=>$this->cycles->archive($id,$this->body(),$a['profile']['id'],$this->requestKey())]])); }
     public function cancel(string $id): mixed { if (($a=$this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $a; return $this->run(fn()=>$this->respond(['data'=>['cycle'=>$this->cycles->cancel($id,$this->body(),$a['profile']['id'],$this->requestKey())]])); }

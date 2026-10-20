@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { renderToPipeableStream, renderToString } from 'react-dom/server'
+import { PassThrough } from 'node:stream'
 import { MemoryRouter } from 'react-router-dom'
 import PersonnelDashboardPage from '../PersonnelDashboardPage'
 import PersonnelDashboardController from '../../../controllers/PersonnelDashboardController'
@@ -29,6 +30,23 @@ const entry = (id, category_code, extra = {}) => PersonnelDashboardController.to
 const render = (user, accomplishments = [], path = '/personnel/dashboard') => {
   session.user = user
   return renderToString(<MemoryRouter initialEntries={[path]}><PersonnelDashboardPage initialAccomplishments={accomplishments} /></MemoryRouter>)
+}
+
+const renderAsync = (user, accomplishments = [], path = '/personnel/dashboard') => {
+  session.user = user
+  const element = <MemoryRouter initialEntries={[path]}><PersonnelDashboardPage initialAccomplishments={accomplishments} /></MemoryRouter>
+  return new Promise((resolve, reject) => {
+    let html = ''
+    let renderer
+    const output = new PassThrough()
+    output.on('data', chunk => { html += chunk.toString() })
+    output.on('end', () => resolve(html))
+    output.on('error', reject)
+    renderer = renderToPipeableStream(element, {
+      onAllReady: () => renderer.pipe(output),
+      onError: reject
+    })
+  })
 }
 
 const filterButtons = (html) => [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)]
@@ -152,8 +170,8 @@ describe('Personnel Dashboard accomplishments timeline', () => {
     expect(filterButtons(html)).toEqual([])
   })
 
-  it('keeps the special dashboard contexts routed as before', () => {
-    expect(render({ ...faculty, active_role_context: 'program_coordinator' })).toContain('data-testid="coordinator-dashboard"')
+  it('keeps the special dashboard contexts routed as before', async () => {
+    expect(await renderAsync({ ...faculty, active_role_context: 'program_coordinator' })).toContain('data-testid="coordinator-dashboard"')
     expect(render({ ...faculty, active_role_context: 'organization_moderator' })).toContain('data-testid="moderator-dashboard"')
     expect(render({ ...faculty, active_role_context: 'dean' }, [], '/personnel/dashboard?tab=workspace')).toContain('data-testid="dean-evaluation-workspace"')
     // The faculty view of a coordinator still shows the personal timeline.

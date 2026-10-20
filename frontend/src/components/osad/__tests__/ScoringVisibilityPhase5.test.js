@@ -10,13 +10,10 @@ describe('Phase 5 item 2: scoring visibility', () => {
     expect(read('backend/app/Config/Routes.php')).toContain("osad/scoring/unscored")
     expect(read('backend/app/Controllers/Api/ApprovedAchievementScoringController.php')).toContain('public function unscored')
   })
-  it('service calls the real endpoints', () => {
-    const s = read('frontend/src/services/awardAdminService.js')
-    expect(s).toContain('/osad/scoring/unscored')
-    expect(s).toContain('/rescore')
-  })
-  it('panel is rendered on the awards page', () => {
-    expect(read('frontend/src/pages/osad-admin/OSADAwardsAndCriteriaPage.jsx')).toContain('<ScoringHealthPanel />')
+  it('does not expose the scoring recovery panel in the OSAD awards interface', () => {
+    const page = read('frontend/src/pages/osad-admin/OSADAwardsAndCriteriaPage.jsx')
+    expect(page).not.toContain('ScoringHealthPanel')
+    expect(page).not.toContain('Scoring health')
   })
   it('coordinator queue no longer drops unenrolled students', () => {
     const s = read('backend/app/Controllers/Api/StudentPortfolioController.php')
@@ -24,6 +21,8 @@ describe('Phase 5 item 2: scoring visibility', () => {
     expect(s).toContain("'ap.id = spe.academic_program_id', 'left'")
   })
   it('coordinator is told when scoring is deferred', () => {
-    expect(read('frontend/src/pages/personnel/program-coordinator/CoordinatorDashboardPage.jsx')).toContain("scoring_status === 'DEFERRED'")
+    const page = read('frontend/src/pages/personnel/program-coordinator/CoordinatorDashboardPage.jsx')
+    expect(page).toContain("scoring_status === 'DEFERRED'")
+    expect(page).not.toContain('OSAD can rescore this record from Awards & Criteria')
   })
 })

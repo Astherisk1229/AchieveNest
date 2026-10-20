@@ -14,15 +14,12 @@ import {
   Users,
   Award,
   Calendar,
-  QrCode,
-  Sparkles,
   Building2,
   FileCheck2,
   BookOpen,
   User,
   GraduationCap,
   Trophy,
-  FileSpreadsheet,
   KeyRound,
   BriefcaseBusiness,
   HeartHandshake
@@ -45,30 +42,30 @@ export const NAVIGATION_CATALOG = [
   // 1. STUDENT PORTAL NAVIGATION
   // ==========================================
   {
-    id: 'student-dashboard',
-    label: 'Dashboard',
-    icon: Home,
-    path: '/student/dashboard',
+    id: 'student-profile',
+    label: 'Profile',
+    icon: User,
+    path: '/student/profile',
     portal: 'student',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
     requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
-    requiredPermissions: ['student.dashboard.read']
-  },
-  {
-    id: 'student-achievements',
-    label: 'Achievements',
-    icon: Award,
-    path: '/student/achievements',
-    portal: 'student',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
-    requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
-    requiredPermissions: ['student.achievement.manage']
+    requiredPermissions: ['student.dashboard.read', 'student.achievement.manage']
   },
   {
     id: 'student-portfolio',
     label: 'Portfolio',
     icon: BookOpen,
     path: '/student/portfolio',
+    portal: 'student',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
+    requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
+    requiredPermissions: ['student.portfolio.read']
+  },
+  {
+    id: 'student-portfolio-submission',
+    label: 'Portfolio Submission',
+    icon: FileCheck2,
+    path: '/student/portfolio-submissions',
     portal: 'student',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
     requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
@@ -113,17 +110,6 @@ export const NAVIGATION_CATALOG = [
   // 3. PROGRAM COORDINATOR NAVIGATION
   // ==========================================
   {
-    id: 'coordinator-dashboard-overview',
-    label: 'Dashboard Overview',
-    icon: Home,
-    path: '/personnel/dashboard?tab=overview',
-    tab: 'overview',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PROGRAM_COORDINATOR],
-    requiredPermissions: ['achievement.student.verify']
-  },
-  {
     id: 'coordinator-verification-workspace',
     label: 'Verification Workspace',
     icon: ShieldCheck,
@@ -150,19 +136,8 @@ export const NAVIGATION_CATALOG = [
   // 4. ORGANIZATION MODERATOR NAVIGATION
   // ==========================================
   {
-    id: 'moderator-dashboard-overview',
-    label: 'Dashboard Overview',
-    icon: Home,
-    path: '/personnel/dashboard?tab=overview',
-    tab: 'overview',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
-    requiredPermissions: ['organization.event.manage']
-  },
-  {
     id: 'moderator-events',
-    label: 'Events & Activities',
+    label: 'Events',
     icon: Calendar,
     path: '/personnel/dashboard?tab=events',
     tab: 'events',
@@ -170,28 +145,6 @@ export const NAVIGATION_CATALOG = [
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
     requiredPermissions: ['organization.event.manage']
-  },
-  {
-    id: 'moderator-attendance',
-    label: 'Attendance Management',
-    icon: QrCode,
-    path: '/personnel/dashboard?tab=attendance',
-    tab: 'attendance',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
-    requiredPermissions: ['organization.attendance.manage']
-  },
-  {
-    id: 'moderator-certificates',
-    label: 'Attendance Certificates',
-    icon: Sparkles,
-    path: '/personnel/dashboard?tab=certificates',
-    tab: 'certificates',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
-    requiredPermissions: ['organization.certificate.issue']
   },
   {
     id: 'moderator-profile',
@@ -297,35 +250,11 @@ export const NAVIGATION_CATALOG = [
 
   // Group 2: Student & Institutional Setup
   {
-    id: 'osad-academic-structure',
-    label: 'College and Programs',
+    id: 'osad-student-management',
+    label: 'Student Management',
     icon: Building2,
-    path: '/osad/dashboard?tab=academic-structure',
-    tab: 'academic-structure',
-    portal: 'osad',
-    workflowFamily: 'setup',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.academic_structure.manage']
-  },
-  {
-    id: 'osad-student-accounts',
-    label: 'Student Accounts',
-    icon: Users,
-    path: '/osad/dashboard?tab=accounts',
-    tab: 'accounts',
-    portal: 'osad',
-    workflowFamily: 'setup',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.academic_structure.manage']
-  },
-  {
-    id: 'osad-student-organizations',
-    label: 'Student Organizations',
-    icon: Users,
-    path: '/osad/dashboard?tab=organizations',
-    tab: 'organizations',
+    path: '/osad/dashboard?tab=student-management&section=accounts',
+    tab: 'student-management',
     portal: 'osad',
     workflowFamily: 'setup',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
@@ -368,45 +297,17 @@ export const NAVIGATION_CATALOG = [
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.award_candidate.review']
   },
-
-  // Group 4: Events & Certificates
   {
-    id: 'osad-certificate-templates',
-    label: 'Certificate Templates',
-    icon: Sparkles,
-    path: '/osad/dashboard?tab=certificate-templates',
-    tab: 'certificate-templates',
+    id: 'osad-portfolio-submission-portal',
+    label: 'Portfolio Submission Portal',
+    icon: FileCheck2,
+    path: '/osad/portfolio-submissions',
     portal: 'osad',
-    workflowFamily: 'credentials',
+    workflowFamily: 'evaluation',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.certificate_template.manage']
+    requiredPermissions: ['osad.award_candidate.review']
   },
 
-  // Group 5: Governance & Reports
-  {
-    id: 'osad-accreditation-reports',
-    label: 'Accreditation Reports',
-    icon: FileSpreadsheet,
-    path: '/osad/dashboard?tab=accreditation-reports',
-    tab: 'accreditation-reports',
-    portal: 'osad',
-    workflowFamily: 'governance',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.academic_structure.manage']
-  },
-  {
-    id: 'osad-activity-log',
-    label: 'OSAD Activity Log',
-    icon: ShieldCheck,
-    path: '/osad/dashboard?tab=system-logs',
-    tab: 'system-logs',
-    portal: 'osad',
-    workflowFamily: 'governance',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.academic_structure.manage']
-  }
 ]
 

@@ -69,15 +69,7 @@ class AwardEvaluationSummaryService
         $evalResult = $this->evalService->evaluateStudentAward($cycle['id'], $awardId, $studentProfileId, $evaluatorProfileId);
         $evalId = $evalResult['evaluation_id'];
 
-        // Determine pathway (check if Dean nomination exists)
-        $deanNom = $this->db->table('dean_student_nominations')
-            ->where('cycle_id', $cycle['id'])
-            ->where('award_definition_id', $awardId)
-            ->where('student_profile_id', $studentProfileId)
-            ->where('status', 'active')
-            ->get()->getRowArray();
-
-        $pathway = $deanNom !== null ? 'dean_nomination' : 'automatic_portfolio';
+        $pathway = 'automatic_portfolio';
 
         // Load all criteria for this award
         $allCriteria = $this->db->table('award_criteria')
@@ -219,11 +211,6 @@ class AwardEvaluationSummaryService
             ],
             'candidate_intake'            => [
                 'candidate_pathway'       => $pathway,
-                'dean_nomination'         => $deanNom !== null ? [
-                    'id'                  => $deanNom['id'],
-                    'justification'       => $deanNom['justification'],
-                    'nominated_at'        => $deanNom['nominated_at'],
-                ] : null,
             ],
             'criteria_breakdown'          => $criteriaBreakdown,
             'not_automatically_evaluated' => $nonComputableCriteria,

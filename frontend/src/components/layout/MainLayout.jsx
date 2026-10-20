@@ -5,7 +5,6 @@ import Topbar from './Topbar'
 import Footer from './Footer'
 import { getCurrentUser, updateUserRoleContext } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
-import { ArrowUp } from 'lucide-react'
 import { HelpGuideProvider } from '../../context/HelpGuideContext'
 import {
   getWorkspaceLandingRoute,
@@ -30,7 +29,6 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
     if (stored !== null) return stored === 'true'
     return window.innerWidth >= 768 && window.innerWidth < 1024
   })
-  const [showScrollTop, setShowScrollTop] = useState(false)
   const mainRef = useRef(null)
   const isHrDashboard = location.pathname === '/hr/dashboard'
   const isHrRankingWorkspace = location.pathname === '/hr/ranking-cycles'
@@ -43,7 +41,6 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         ? [{ label: 'Password Resets', path: '/hr/password-resets' }, { label: 'HR Audit Trail', path: '/hr/audit-trail' }]
         : [{ label: 'Evaluation Queue', path: '/hr/evaluation-submissions' }, { label: 'Ranking Periods', path: '/hr/ranking-cycles' }, { label: 'Evaluation Criteria', path: '/hr/ranking-cycles/criteria' }]
     : null
-  const isCollegePersonnelRoster = location.pathname === '/dean/college-personnel'
   const normalizedActiveWorkspace = normalizeRoleContext(activeRoleContext || currentUser?.active_role_context)
   const routeOwnership = resolveRouteOwnership(
     location.pathname,
@@ -78,36 +75,6 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
     }
     window.scrollTo(0, 0)
   }, [location.pathname, location.search])
-
-  useEffect(() => {
-    const mainEl = mainRef.current
-
-    const handleScroll = () => {
-      const scrollTop = mainEl ? mainEl.scrollTop : window.scrollY
-      if (scrollTop > 200) {
-        setShowScrollTop(true)
-      } else {
-        setShowScrollTop(false)
-      }
-    }
-
-    if (mainEl) {
-      mainEl.addEventListener('scroll', handleScroll)
-    }
-    window.addEventListener('scroll', handleScroll)
-
-    return () => {
-      if (mainEl) mainEl.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('scroll', handleScroll)
-    }
-  }, [])
-
-  const scrollToTop = () => {
-    if (mainRef.current) {
-      mainRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
 
   const handleRoleChange = (newRoleContext) => {
     const requestedWorkspace = normalizeRoleContext(newRoleContext)
@@ -250,22 +217,6 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         </main>
         
       </div>
-
-      {/* Floating Scroll To Top Button (High-Contrast Soft Minimalist) */}
-      {showScrollTop && !isHrDashboard && !isCollegePersonnelRoster && (
-        <button
-          type="button"
-          onClick={scrollToTop}
-          aria-label="Scroll to top"
-          title="Back to Top"
-          className="fixed bottom-6 right-6 z-50 px-3.5 py-2.5 rounded-2xl bg-[#064e2b] dark:bg-[#0a2417] text-white font-extrabold text-xs border border-[#16834a]/60 shadow-lg hover:bg-[#16834a] dark:hover:bg-emerald-600 transition-all duration-200 flex items-center gap-2 group cursor-pointer animate-in fade-in slide-in-from-bottom-3"
-        >
-          <div className="w-6 h-6 rounded-lg bg-[#16834a]/40 text-emerald-200 border border-emerald-400/30 flex items-center justify-center shrink-0">
-            <ArrowUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5 text-white" />
-          </div>
-          <span className="hidden sm:inline">Back to Top</span>
-        </button>
-      )}
 
     </div>
     </HelpGuideProvider>

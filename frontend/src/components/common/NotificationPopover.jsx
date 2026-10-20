@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Bell, CheckCheck, ChevronRight, RefreshCw } from 'lucide-react'
 import notificationApiService from '../../services/notificationApiService'
@@ -11,6 +11,7 @@ export default function NotificationPopover() {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const popoverRef = useRef(null)
 
   const fetchNotifications = async () => {
     try {
@@ -40,6 +41,24 @@ export default function NotificationPopover() {
     fetchNotifications()
   }, [location.pathname])
 
+  useEffect(() => {
+    if (!isOpen) return undefined
+
+    const handlePointerDown = event => {
+      if (!popoverRef.current?.contains(event.target)) setIsOpen(false)
+    }
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') setIsOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
   const markAllRead = async () => {
     try {
       await notificationApiService.markAllAsRead()
@@ -67,7 +86,7 @@ export default function NotificationPopover() {
   }
 
   return (
-    <div className="relative inline-block text-left font-sans">
+    <div ref={popoverRef} className="relative inline-block text-left font-sans">
       <button
         type="button"
         onClick={() => {
@@ -89,7 +108,6 @@ export default function NotificationPopover() {
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
           <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white dark:bg-[#131e2e] text-slate-900 dark:text-white shadow-2xl border border-slate-200/90 dark:border-slate-800 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">

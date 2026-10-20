@@ -9,7 +9,8 @@ import campusBanner from '../../assets/ndmu_campus_banner.png'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
 import { AchieveNestLogo } from '../../components/brand'
 import StudentCertificateBadge from '../../components/common/StudentCertificateBadge'
-import { ArrowRight, BookOpen, Check, CheckCircle2, Clock, CreditCard, FileText, GraduationCap, Mail, RotateCcw, Share2, Sparkles, Trophy } from 'lucide-react'
+import EvidenceThumbnail from '../../components/common/EvidenceThumbnail'
+import { ArrowRight, BookOpen, Check, CheckCircle2, Clock, CreditCard, FileText, GraduationCap, Mail, RotateCcw, Share2, Trophy } from 'lucide-react'
 
 /**
  * Counts and lists derived only from the student's own /portfolio records.
@@ -84,7 +85,8 @@ export default function StudentPortfolioPage({ currentUser }) {
     title: record.title,
     date: record.start_date || record.occurrence_date || record.verified_at,
     category: record.category_name || 'Achievement',
-    certificate: record.certificate || null
+    certificate: record.certificate || null,
+    evidence: Array.isArray(record.evidence) ? record.evidence[0] || null : null
   }))
 
   const evidenceItems = summary.verifiedRecords.flatMap(record => (record.evidence || []).map(evidence => ({
@@ -139,7 +141,7 @@ export default function StudentPortfolioPage({ currentUser }) {
 
           <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
             <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
-            <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">Veritas • Caritas • Excellentia</div>
+            <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">Character, Competence, and Culture in harmony</div>
           </div>
 
           <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 relative z-20">
@@ -176,8 +178,8 @@ export default function StudentPortfolioPage({ currentUser }) {
                   <button type="button" onClick={handleSharePortfolio} className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5">
                     <Share2 className="w-3.5 h-3.5 text-slate-500" /><span>Share</span>
                   </button>
-                  <button type="button" onClick={() => setIsExportModalOpen(true)} disabled={summary.verified === 0} className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 disabled:opacity-50">
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-200" /><span>Portfolio Booklet View</span><Sparkles className="w-3 h-3 text-amber-300" />
+                  <button type="button" onClick={() => setIsExportModalOpen(true)} disabled={summary.verified === 0} className="px-4 py-2 rounded-lg bg-[#16834a] hover:bg-[#126b3c] text-white text-xs font-bold transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                    <BookOpen className="w-3.5 h-3.5" /><span>Preview portfolio</span>
                   </button>
                 </div>
               </div>
@@ -203,8 +205,8 @@ export default function StudentPortfolioPage({ currentUser }) {
                     aria-label={`View ${item.title || 'verified achievement'}`}
                     className="group overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                   >
-                    <div className="h-20 bg-[#16834a] flex items-center justify-center relative">
-                      <Trophy className="w-8 h-8 text-white" />
+                    <div className="relative">
+                      <EvidenceThumbnail evidence={item.evidence} className="h-32 bg-slate-50" fit="object-contain" />
                       <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-white/90 text-[#064e2b] text-[10px] font-extrabold">Verified</span>
                     </div>
                     <div className="p-4 space-y-2">

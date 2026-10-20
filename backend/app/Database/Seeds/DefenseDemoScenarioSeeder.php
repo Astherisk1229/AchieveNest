@@ -265,10 +265,9 @@ class DefenseDemoScenarioSeeder extends Seeder
         ]);
         $seedEvidence('personnel', $facultyId, $accId, 'IEEE_Paper_Publication_Proof.pdf');
 
-        // 4. Seed Active Award Cycle & Dean Nomination
+        // 4. Seed the active award cycle
         $cycleId = 'd0000000-0000-0000-0008-000000000001';
         $award = $db->table('award_definitions')->where('status', 'active')->orderBy('code', 'ASC')->get()->getRowArray();
-        $deanAssign = $db->table('dean_assignments')->where('personnel_profile_id', $deanId)->get()->getRowArray();
         $osadAdmin = $db->table('profiles')->where('email', 'demo.osad.admin@ndmu.edu.ph')->get()->getRowArray();
         $creatorId = $osadAdmin['id'] ?? $deanId;
 
@@ -287,20 +286,6 @@ class DefenseDemoScenarioSeeder extends Seeder
                 'created_at'          => $now,
             ]);
 
-            // Dean Nomination for Student A
-            $nomId = 'd0000000-0000-0000-0009-000000000001';
-            $db->table('dean_student_nominations')->upsert([
-                'id'                  => $nomId,
-                'cycle_id'            => $cycleId,
-                'award_definition_id' => $award['id'],
-                'student_profile_id'  => $studentAId,
-                'dean_assignment_id'  => $deanAssign['id'] ?? null,
-                'dean_profile_id'     => $deanId,
-                'college_id'          => $deanAssign['college_id'] ?? null,
-                'justification'       => 'Strongly endorsed by the Dean of CET for exceptional leadership and academic achievements.',
-                'status'              => 'active',
-                'nominated_at'        => $now,
-            ]);
         }
     }
 }

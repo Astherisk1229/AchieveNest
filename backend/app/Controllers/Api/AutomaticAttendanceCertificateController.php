@@ -51,16 +51,34 @@ final class AutomaticAttendanceCertificateController extends Controller
         }
 
         $records = $this->baseQuery($isOsad, $organizationIds)
-            ->select('spr.id, spr.title, spr.status, spr.verified_at, spr.created_at, p.full_name AS student_name, p.institutional_id AS student_id_number, e.id AS event_id, e.title AS event_title')
+            ->select('spr.id, spr.student_profile_id, spr.title, spr.status, spr.verified_at, spr.created_at, spr.occurrence_date, spr.organizer_or_body, spr.structured_metadata, p.full_name AS student_name, p.institutional_id AS student_id_number, e.id AS event_id, e.title AS event_title')
             ->orderBy('spr.created_at', 'DESC')
             ->limit(200)
             ->get()
             ->getResultArray();
 
+        // A participation certificate is issued once per student and event. Keep
+        // the newest row visible while exposing how many historic duplicates
+        // were found so the source records can still be reconciled safely.
+        $uniqueRecords = [];
+        $duplicateRecords = 0;
+        foreach ($records as $record) {
+            $key = (string) ($record['event_id'] ?? '') . ':' . (string) ($record['student_profile_id'] ?? '');
+            if (isset($uniqueRecords[$key])) {
+                $uniqueRecords[$key]['duplicate_record_count']++;
+                $duplicateRecords++;
+                continue;
+            }
+            $record['duplicate_record_count'] = 1;
+            $uniqueRecords[$key] = $record;
+        }
+        $records = array_values($uniqueRecords);
+
         $summary = [
             'total' => count($records),
             'verified' => count(array_filter($records, static fn (array $record): bool => ($record['status'] ?? '') === 'verified')),
             'events' => count(array_unique(array_filter(array_column($records, 'event_id')))),
+            'duplicate_records' => $duplicateRecords,
         ];
 
         return $this->respond(['data' => ['certificates' => $records, 'summary' => $summary]]);

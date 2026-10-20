@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   Users,
   Calendar,
   Award,
-  TrendingUp,
   MapPin,
   Clock,
   Plus,
   QrCode,
-  Download,
   Sparkles,
   CheckCircle2,
   Building2,
   Search,
+  X,
   Edit,
   Trash2,
   ShieldCheck,
@@ -35,28 +34,33 @@ import {
 
 
 
-import OrganizationController from '../../../controllers/OrganizationController'
+import { updateOrganizationModeratorProfile } from '../../../services/organizationAdminService'
 import useOrganization from '../../../hooks/useOrganization'
 import EventCreationModal from './EventCreationModal'
 import AttendanceScannerModal from './AttendanceScannerModal'
 import EventCardOptionsMenu from './EventCardOptionsMenu'
-import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
+import SignatureVault, { cleanOrganizationSignatoryImage, cleanOrganizationSignatoryName, parseSignatoryInfo } from '../../../utils/signatureVault'
 import DigitalCertificatesWorkspace from './certificates/DigitalCertificatesWorkspace'
-import { AchieveNestLogo } from '../../../components/brand'
 import { alertDialog, confirmDialog } from '../../../components/ui/DialogProvider'
 
 
 
 
-export default function OrganizationModeratorDashboardPage({ _currentUser }) {
+export default function OrganizationModeratorDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const _navigate = useNavigate()
   const rawTab = searchParams.get('tab')
-  const activeTab = (!rawTab || rawTab === 'dashboard' || rawTab === 'overview') ? 'dashboard' : rawTab
+  const isLegacyOverview = !rawTab || rawTab === 'dashboard' || rawTab === 'overview'
+  const activeTab = isLegacyOverview ? 'events' : rawTab
+
+  useEffect(() => {
+    if (isLegacyOverview) setSearchParams({ tab: 'events' }, { replace: true })
+  }, [isLegacyOverview, setSearchParams])
 
   const {
     orgInfo,
     events,
+    eventsLoading,
+    eventsError,
     metrics,
     createEvent,
     updateEvent,
@@ -73,8 +77,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     selectAttendanceSession,
     openAttendanceSession,
     closeAttendanceSession,
-    loadAttendanceRecords
-  } = useOrganization()
+    loadAttendanceRecords,
+    refreshData,
+    organizationLoading,
+    organizationError
+  } = useOrganization(currentUser)
 
   // Selected Active Event for Attendance Monitoring
   const [activeAttendanceEvtId, setActiveAttendanceEvtId] = useState('')
@@ -146,42 +153,71 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
   // Manage Profile State
   const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [isProfileSaving, setIsProfileSaving] = useState(false)
+  const [profileSaveError, setProfileSaveError] = useState('')
+  const [profileSaveNotice, setProfileSaveNotice] = useState('')
   const [profileData, setProfileData] = useState({
-    name: 'Computer Society NDMU',
-    code: 'CEAC',
-    college: 'CEAC - College of Engineering, Architecture, and Computing',
-    academic_year: 'AY 2025-2026',
-    moderator_name: 'Dr. Ana Reyes',
-    description: 'The premier technology organization of Notre Dame of Marbel University, dedicated to fostering excellence in computing, innovation, and leadership among its members.',
-    contact_email: 'comsoc@ndmu.edu.ph',
-    college_dept: 'CEAC - College of Engineering, Architecture, and Computing',
-    facebook_url: 'https://facebook.com/ComSocNDMU',
-    established_year: '1998',
-    social_status: 'Facebook Active'
+    name: '',
+    code: '',
+    college: '',
+    academic_year: '',
+    moderator_name: '',
+    description: '',
+    contact_email: '',
+    college_dept: '',
+    facebook_url: '',
+    established_year: '',
+    social_status: ''
   })
+  const [savedProfileData, setSavedProfileData] = useState(null)
 
   useEffect(() => {
     if (orgInfo) {
-      setProfileData(prev => ({
-        ...prev,
-        name: orgInfo.name || prev.name,
-        code: orgInfo.code || prev.code,
-        college: orgInfo.college || prev.college,
-        academic_year: orgInfo.academic_year || prev.academic_year,
-        moderator_name: orgInfo.moderator_name || prev.moderator_name,
-        description: orgInfo.description || prev.description,
-        contact_email: orgInfo.contact_email || prev.contact_email,
-        college_dept: orgInfo.college_dept || prev.college_dept,
-        facebook_url: orgInfo.facebook_url || prev.facebook_url,
-        established_year: orgInfo.established_year || prev.established_year,
-        social_status: orgInfo.social_status || prev.social_status
-      }))
+      const canonicalProfile = {
+        name: orgInfo.name || '',
+        code: orgInfo.code || '',
+        college: orgInfo.college || '',
+        academic_year: orgInfo.academic_year || '',
+        moderator_name: orgInfo.moderator_name || '',
+        description: orgInfo.profile_configuration?.description ?? '',
+        contact_email: orgInfo.profile_configuration?.contact_email ?? '',
+        college_dept: orgInfo.college_dept || orgInfo.college || '',
+        facebook_url: orgInfo.profile_configuration?.facebook_url ?? '',
+        established_year: orgInfo.established_year || '',
+        social_status: orgInfo.social_status || ''
+      }
+      setProfileData(canonicalProfile)
+      setSavedProfileData(canonicalProfile)
     }
   }, [orgInfo])
 
-  const handleSaveProfile = () => {
-    OrganizationController.updateProfile(profileData)
-    setIsEditingProfile(false)
+  const handleSaveProfile = async () => {
+    if (!orgInfo?.id || isProfileSaving) return
+    setIsProfileSaving(true)
+    setProfileSaveError('')
+    setProfileSaveNotice('')
+    try {
+      const result = await updateOrganizationModeratorProfile(orgInfo.id, {
+        description: profileData.description,
+        contact_email: profileData.contact_email,
+        facebook_url: profileData.facebook_url
+      })
+      const savedProfile = result?.profile_configuration || {}
+      const updatedProfile = {
+        ...profileData,
+        description: savedProfile.description ?? profileData.description,
+        contact_email: savedProfile.contact_email ?? profileData.contact_email,
+        facebook_url: savedProfile.facebook_url ?? profileData.facebook_url
+      }
+      setProfileData(updatedProfile)
+      setSavedProfileData(updatedProfile)
+      setIsEditingProfile(false)
+      setProfileSaveNotice('Organization profile saved.')
+    } catch (error) {
+      setProfileSaveError(error?.response?.data?.error?.message || error?.message || 'Could not save the organization profile. Try again.')
+    } finally {
+      setIsProfileSaving(false)
+    }
   }
 
   // Manage Events Search, Filter & Detail View states
@@ -217,13 +253,6 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
       setActiveAttendanceEvtId(eventId)
     }
     setSearchParams({ tab: 'attendance' })
-  }
-
-  // Handler to open create event modal from dashboard (Redirects to events tab + opens modal)
-  const handleDashboardCreateEvent = () => {
-    setEditingEvent(null)
-    setSearchParams({ tab: 'events' })
-    setIsCreateOpen(true)
   }
 
   // Handler to open create event modal directly in Manage Events
@@ -267,8 +296,28 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     setIsScannerOpen(true)
   }
 
-  const handleOpenCertificates = () => {
-    setSearchParams({ tab: 'certificates' })
+  const handleOpenCertificates = (evt = null) => {
+    setSearchParams(evt?.id
+      ? { tab: 'certificates', eventId: String(evt.id) }
+      : { tab: 'certificates' })
+  }
+
+  const navigateToEvents = () => {
+    setManageEventsViewMode('list')
+    setSelectedEventDetail(null)
+    setSearchParams({ tab: 'events' })
+  }
+
+  const navigateToAttendance = () => {
+    const selectedEventId = searchParams.get('eventId') || activeEvt?.id
+    if (selectedEventId) setActiveAttendanceEvtId(String(selectedEventId))
+    setSearchParams({ tab: 'attendance' })
+  }
+
+  const navigateToCertificates = () => {
+    const selectedEventId = searchParams.get('eventId')
+    const event = (selectedEventId && events.find((item) => String(item.id) === String(selectedEventId))) || activeEvt
+    handleOpenCertificates(event)
   }
 
   // Signature Vault state & Handler
@@ -436,12 +485,17 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     }
   }
 
-  // Counts for Manage Events filter pills
+  // Counts for the event lifecycle filters. “All” includes every stored status.
   const allEventsCount = events.length
   const upcomingCount = events.filter(e => e.status === 'Upcoming').length
   const ongoingCount = events.filter(e => e.status === 'Ongoing').length
   const completedCount = events.filter(e => e.status === 'Completed').length
   const cancelledCount = events.filter(e => e.status === 'Cancelled').length
+  const hasEventCriteria = Boolean(eventsSearchTerm.trim()) || eventsFilter !== 'All'
+  const clearEventCriteria = () => {
+    setEventsSearchTerm('')
+    setEventsFilter('All')
+  }
 
   // Filtered Events List for Manage Events Workspace
   const filteredEventsList = events.filter(evt => {
@@ -449,13 +503,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     if (eventsFilter === 'Ongoing' && evt.status !== 'Ongoing') return false
     if (eventsFilter === 'Completed' && evt.status !== 'Completed') return false
     if (eventsFilter === 'Cancelled' && evt.status !== 'Cancelled') return false
-    if (eventsFilter === 'All' && evt.status === 'Cancelled') return false
-
     if (eventsSearchTerm.trim()) {
-      const query = eventsSearchTerm.toLowerCase()
-      const matchTitle = evt.title.toLowerCase().includes(query)
-      const matchVenue = evt.venue.toLowerCase().includes(query)
-      const matchCategory = evt.category.toLowerCase().includes(query)
+      const query = eventsSearchTerm.trim().toLowerCase()
+      const matchTitle = String(evt.title || '').toLowerCase().includes(query)
+      const matchVenue = String(evt.venue || '').toLowerCase().includes(query)
+      const matchCategory = String(evt.category || '').toLowerCase().includes(query)
       return matchTitle || matchVenue || matchCategory
     }
 
@@ -463,7 +515,46 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   })
 
   return (
-    <div className="space-y-8 font-sans relative">
+    <div data-org-moderator-surface className="space-y-8 font-sans relative">
+
+      {['events', 'attendance', 'certificates'].includes(activeTab) && (
+        <nav aria-label="Events module navigation" className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Event features">
+            <button
+              type="button"
+              onClick={navigateToEvents}
+              aria-current={activeTab === 'events' ? 'page' : undefined}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 ${activeTab === 'events' ? 'bg-[#176B43] text-white shadow-sm' : 'text-emerald-950 hover:bg-emerald-50 hover:text-emerald-900'}`}
+            >
+              <Calendar className="h-4 w-4" aria-hidden="true" />
+              Events
+            </button>
+            <button
+              type="button"
+              onClick={navigateToAttendance}
+              aria-current={activeTab === 'attendance' ? 'page' : undefined}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 ${activeTab === 'attendance' ? 'bg-[#176B43] text-white shadow-sm' : 'text-emerald-950 hover:bg-emerald-50 hover:text-emerald-900'}`}
+            >
+              <QrCode className="h-4 w-4" aria-hidden="true" />
+              Attendance
+            </button>
+            <button
+              type="button"
+              onClick={navigateToCertificates}
+              aria-current={activeTab === 'certificates' ? 'page' : undefined}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 ${activeTab === 'certificates' ? 'bg-[#176B43] text-white shadow-sm' : 'text-emerald-950 hover:bg-emerald-50 hover:text-emerald-900'}`}
+            >
+              <Award className="h-4 w-4" aria-hidden="true" />
+              Certificates
+            </button>
+          </div>
+          {(activeTab === 'attendance' || activeTab === 'certificates') && (activeEvt || searchParams.get('eventId')) && (
+            <p className="px-1 text-xs font-semibold text-slate-500 sm:text-right">
+              Current event: <span className="text-slate-800">{activeTab === 'certificates' && searchParams.get('eventId') ? (events.find((item) => String(item.id) === String(searchParams.get('eventId')))?.title || activeEvt?.title || 'Selected event') : (activeEvt?.title || 'Selected event')}</span>
+            </p>
+          )}
+        </nav>
+      )}
 
       {/* Copied Toast Notification */}
       {showCopiedToast && (
@@ -507,7 +598,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                 <button
                   onClick={() => handleOpenEditModal(selectedEventDetail)}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 hover:text-[#16834a] border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 hover:text-[#16834a] border border-slate-200 text-[#17452f] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Edit className="w-3.5 h-3.5 text-slate-500" />
                   <span>Edit Event</span>
@@ -519,6 +610,13 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                   <span>View Attendance</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenCertificates(selectedEventDetail)}
+                  className="px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-bold transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  <span>View Certificates</span>
                 </button>
 
                 <button
@@ -692,12 +790,12 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               </div>
             </div>
 
-            {/* Section C: Official OSAD Certificate & Accreditation Setup Card */}
+            {/* Section C: Organization-issued event certificate setup */}
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Award className="w-4.5 h-4.5 text-[#16834a]" />
-                  Official OSAD Certificate & Accreditation Setup
+                  Organization Certificate Setup
                 </h3>
                 <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 self-start sm:self-auto">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
@@ -709,23 +807,14 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 {/* Left Details Info */}
                 <div className="lg:col-span-5 space-y-3">
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Assigned OSAD Template</p>
-                    <p className="text-xs font-extrabold text-slate-900">
-                      {selectedEventDetail.osad_template_id === 'OSAD-TPL-03' ? '[OSAD-TPL-03] Certificate of Workshop Completion' :
-                        selectedEventDetail.osad_template_id === 'OSAD-TPL-02' ? '[OSAD-TPL-02] Certificate of Leadership & Merit' :
-                          selectedEventDetail.osad_template_id === 'OSAD-TPL-04' ? '[OSAD-TPL-04] Excellence & Special Distinction Award' :
-                            selectedEventDetail.osad_template_id === 'OSAD-TPL-05' ? '[OSAD-TPL-05] NDMU Sports & Athletics Accreditation' :
-                              '[OSAD-TPL-01] Official NDMU Certificate of Participation'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      Template graphics, security seals, and accreditation standards managed centrally by Office of Student Affairs & Services.
-                    </p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Issuing organization</p>
+                    <p className="text-xs font-extrabold text-slate-900">{profileData.name}</p>
+                    <p className="text-[11px] text-slate-500 font-medium">Verified attendees receive this organization-issued Certificate of Participation after the event closes.</p>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Verified Signatories & Vault Signatures</p>
-                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Vault Synced</span>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Organization signatories</p>
                     </div>
 
                     <div className="space-y-2 text-xs">
@@ -733,7 +822,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
                         <p className="font-extrabold text-slate-800 flex items-center gap-1.5 truncate">
                           <ShieldCheck className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
-                          <span className="truncate">{selectedEventDetail.signatory_1 || 'Dr. Ana Reyes (Club Moderator)'}</span>
+                          <span className="truncate">{cleanOrganizationSignatoryName(selectedEventDetail.certificate_configuration?.signatory_1 || selectedEventDetail.signatory_1) || 'Organization moderator'}</span>
                         </p>
                         <label className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#16834a] border border-emerald-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shrink-0">
                           <Upload className="w-3 h-3" />
@@ -751,7 +840,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
                         <p className="font-extrabold text-slate-800 flex items-center gap-1.5 truncate">
                           <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span className="truncate">{selectedEventDetail.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)'}</span>
+                          <span className="truncate">{cleanOrganizationSignatoryName(selectedEventDetail.certificate_configuration?.signatory_2 || selectedEventDetail.signatory_2) || 'Authorized signatory'}</span>
                         </p>
                         <label className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shrink-0">
                           <Upload className="w-3 h-3" />
@@ -774,7 +863,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       Attendance Certificates Are Automatic
                     </span>
                     <p className="text-[11px] text-slate-600">
-                      When an attendance session closes, every verified attendee automatically receives a Certificate of Participation record in their portfolio. No OSAD review or manual issuance is required.
+                      When an attendance session closes, every verified attendee automatically receives the certificate issued by this organization.
                     </p>
                   </div>
                 </div>
@@ -792,15 +881,9 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                     {/* Certificate Header */}
                     <div className="space-y-1 relative z-10">
-                      <p className="text-[10px] font-extrabold tracking-widest uppercase text-amber-900">NOTRE DAME OF MARBEL UNIVERSITY</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Office of Student Affairs & Services (OSAD)</p>
-                      <h2 className="text-lg font-serif font-extrabold text-slate-900 pt-1 tracking-wide">
-                        {selectedEventDetail.osad_template_id === 'OSAD-TPL-03' ? 'CERTIFICATE OF WORKSHOP COMPLETION' :
-                          selectedEventDetail.osad_template_id === 'OSAD-TPL-02' ? 'CERTIFICATE OF LEADERSHIP & MERIT' :
-                            selectedEventDetail.osad_template_id === 'OSAD-TPL-04' ? 'EXCELLENCE & SPECIAL DISTINCTION AWARD' :
-                              selectedEventDetail.osad_template_id === 'OSAD-TPL-05' ? 'SPORTS & ATHLETICS ACCREDITATION CERTIFICATE' :
-                                'CERTIFICATE OF PARTICIPATION'}
-                      </h2>
+                      <p className="text-[10px] font-extrabold tracking-widest uppercase text-amber-900">{profileData.name}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Notre Dame of Marbel University</p>
+                      <h2 className="text-lg font-serif font-extrabold text-slate-900 pt-1 tracking-wide">CERTIFICATE OF PARTICIPATION</h2>
                     </div>
 
                     <div className="space-y-1 relative z-10">
@@ -823,8 +906,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     {/* Rendered Digital Signatures (Signature Over Printed Name Format) */}
                     <div className="pt-4 grid grid-cols-2 gap-6 border-t border-amber-900/20 max-w-md mx-auto relative z-10 text-[10px]">
                       {(() => {
-                        const sig1 = parseSignatoryInfo(selectedEventDetail.signatory_1, 'Dr. Ana Reyes', 'Club Moderator')
-                        const sig2 = parseSignatoryInfo(selectedEventDetail.signatory_2, 'Prof. Juan Dela Cruz', 'OSAD Director')
+                        const sig1 = parseSignatoryInfo(cleanOrganizationSignatoryName(selectedEventDetail.certificate_configuration?.signatory_1 || selectedEventDetail.signatory_1), '', 'Organization Moderator')
+                        const sig2 = parseSignatoryInfo(cleanOrganizationSignatoryName(selectedEventDetail.certificate_configuration?.signatory_2 || selectedEventDetail.signatory_2), '', 'Authorized Signatory')
+                        const sig1Image = cleanOrganizationSignatoryImage(selectedEventDetail.certificate_configuration?.signatory_1_img || selectedEventDetail.signatory_1_img) || SignatureVault.getSignatures().signatory_1_img
+                        const sig2Image = cleanOrganizationSignatoryImage(selectedEventDetail.certificate_configuration?.signatory_2_img || selectedEventDetail.signatory_2_img) || SignatureVault.getSignatures().signatory_2_img
 
                         return (
                           <>
@@ -832,11 +917,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                             <div className="flex flex-col items-center justify-end text-center relative">
                               {/* Floating Signature Graphic */}
                               <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
-                                <img
-                                  src={selectedEventDetail.signatory_1_img || SignatureVault.getSignatures().signatory_1_img || DEFAULT_SIG_1_IMG}
+                                {sig1Image && <img
+                                  src={sig1Image}
                                   alt="Primary Signatory Signature"
                                   className="h-9 max-w-[130px] object-contain"
-                                />
+                                />}
                               </div>
                               {/* Printed Name */}
                               <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
@@ -854,11 +939,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                             <div className="flex flex-col items-center justify-end text-center relative">
                               {/* Floating Signature Graphic */}
                               <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
-                                <img
-                                  src={selectedEventDetail.signatory_2_img || SignatureVault.getSignatures().signatory_2_img || DEFAULT_SIG_2_IMG}
+                                {sig2Image && <img
+                                  src={sig2Image}
                                   alt="Secondary Signatory Signature"
                                   className="h-9 max-w-[130px] object-contain"
-                                />
+                                />}
                               </div>
                               {/* Printed Name */}
                               <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
@@ -879,7 +964,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
 
                     <div className="text-[9px] font-mono text-slate-400 pt-1">
-                      Verification Code: NDMU-OSAD-2026-X8921 • OSAD Accreditation Badge Verified
+                      Organization-issued attendance certificate
                     </div>
 
                   </div>
@@ -944,112 +1029,147 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
         ) : (
           <div className="space-y-6 animate-in fade-in duration-200">
 
-            {/* Header Card */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#16834a] border border-emerald-100 flex items-center justify-center shrink-0">
-                  <Calendar className="w-6 h-6" />
+            {/* Combined organization overview and event workspace */}
+            <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-[#EFF7F0] p-5 text-[#17663B] shadow-sm sm:p-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div>
+                    <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{orgInfo?.name || (organizationLoading ? 'Loading organization…' : 'Organization unavailable')}</h1>
+                    <p className="mt-1 text-sm font-medium text-[#356148]">{orgInfo?.college || (organizationLoading ? 'Loading assigned organization details…' : 'Organization assignment could not be loaded.')}{orgInfo?.academic_year ? ` · ${orgInfo.academic_year}` : ''}</p>
+                    <p className="mt-2 text-xs text-[#356148]">Events, attendance, and certificates for your organization.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateModal}
+                    disabled={!orgInfo || organizationLoading}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-lg bg-[#16834a] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#126b3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:self-center"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    <span>Create Event</span>
+                  </button>
                 </div>
-                <div>
-                  <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Manage Events</h1>
-                  <p className="text-xs text-slate-500 font-medium">{events.length} total events</p>
+
+                <div className="grid grid-cols-2 gap-2 border-t border-emerald-200 pt-4 md:grid-cols-4">
+                  <div className="rounded-xl bg-white/90 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Events this academic year</p>
+                    <p className="mt-1 text-xl font-extrabold tabular-nums text-slate-900">{metrics.events_this_year}</p>
+                  </div>
+                  <button type="button" onClick={() => setSearchParams({ tab: 'attendance' })} className="rounded-xl bg-white/90 px-4 py-3 text-left transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Total attendees</p>
+                    <p className="mt-1 text-xl font-extrabold tabular-nums text-slate-900">{metrics.total_participants}</p>
+                  </button>
+                  <button type="button" onClick={handleOpenCertificates} className="rounded-xl bg-white/90 px-4 py-3 text-left transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Attendance certificates</p>
+                    <p className="mt-1 text-sm font-extrabold text-emerald-800">View records</p>
+                  </button>
+                  <button type="button" onClick={() => setSearchParams({ tab: 'profile' })} className="rounded-xl bg-white/90 px-4 py-3 text-left transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Registered members</p>
+                    <p className="mt-1 text-xl font-extrabold tabular-nums text-slate-900">{metrics.active_members}</p>
+                  </button>
                 </div>
               </div>
+            </section>
+            {organizationError && (
+              <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                {organizationError}
+              </p>
+            )}
 
-              <button
-                onClick={handleOpenCreateModal}
-                className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create Event</span>
-              </button>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-extrabold tracking-tight text-slate-900">Events &amp; Activities</h2>
+                <p className="mt-1 text-sm text-slate-600">Search and manage upcoming and past events.</p>
+              </div>
+              <p className="text-xs font-semibold text-slate-500">{events.length} total events</p>
             </div>
 
             {/* Search Toolbar & Status Filter Pills */}
-            <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
 
               {/* Search Bar Input */}
-              <div className="relative flex-1 w-full">
+              <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Search className="w-4 h-4" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search events..."
+                  aria-label="Search by event name, venue, or category"
+                  placeholder="Search by event name, venue, or category"
                   value={eventsSearchTerm}
                   onChange={(e) => setEventsSearchTerm(e.target.value)}
-                  className="w-full pl-9.5 pr-4 py-2 rounded-2xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#16834a] transition"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-11 text-sm text-slate-800 placeholder:text-slate-500 focus:border-[#16834a] focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
                 />
+                {eventsSearchTerm && (
+                  <button type="button" onClick={() => setEventsSearchTerm('')} aria-label="Clear event search" className="absolute inset-y-0 right-2 my-auto flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-700">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
-              {/* Filter Pills Row */}
-              <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 shrink-0">
-                <button
-                  onClick={() => setEventsFilter('All')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'All'
-                    ? 'bg-[#16834a] text-white shadow-xs'
-                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
-                    }`}
-                >
-                  All ({allEventsCount - cancelledCount})
-                </button>
-
-                <button
-                  onClick={() => setEventsFilter('Upcoming')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Upcoming'
-                    ? 'bg-[#16834a] text-white shadow-xs'
-                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
-                    }`}
-                >
-                  Upcoming ({upcomingCount})
-                </button>
-
-                <button
-                  onClick={() => setEventsFilter('Ongoing')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Ongoing'
-                    ? 'bg-[#16834a] text-white shadow-xs'
-                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
-                    }`}
-                >
-                  Ongoing ({ongoingCount})
-                </button>
-
-                <button
-                  onClick={() => setEventsFilter('Completed')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Completed'
-                    ? 'bg-[#16834a] text-white shadow-xs'
-                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
-                    }`}
-                >
-                  Completed ({completedCount})
-                </button>
-
-                <button
-                  onClick={() => setEventsFilter('Cancelled')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Cancelled'
-                    ? 'bg-slate-800 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                >
-                  Archived ({cancelledCount})
-                </button>
+              <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <div role="group" aria-label="Filter events by status" className="flex flex-wrap gap-2">
+                  {[
+                    ['All', allEventsCount],
+                    ['Upcoming', upcomingCount],
+                    ['Ongoing', ongoingCount],
+                    ['Completed', completedCount],
+                    ['Cancelled', cancelledCount],
+                  ].map(([status, count]) => {
+                    const selected = eventsFilter === status
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setEventsFilter(status)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${selected
+                          ? 'border-[#176B43] bg-[#176B43] text-white'
+                          : count === 0
+                            ? 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                            : 'border-emerald-100 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+                          }`}
+                      >
+                        {status} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
+                {hasEventCriteria && (
+                  <button type="button" onClick={clearEventCriteria} className="self-start text-xs font-semibold text-emerald-800 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 sm:self-auto">
+                    Clear filters
+                  </button>
+                )}
               </div>
 
             </div>
 
             {/* Formatted Event List Items Container */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-6 space-y-3">
-              {filteredEventsList.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 font-medium text-xs">
-                  No events found matching your criteria.
+            <div className="space-y-3">
+              {eventsLoading ? (
+                <div role="status" className="rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-600">Loading events…</div>
+              ) : eventsError ? (
+                <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-6 text-center">
+                  <p className="text-sm font-semibold text-rose-900">Events couldn’t be loaded.</p>
+                  <p className="mt-1 text-sm text-rose-800">Check your connection and try again.</p>
+                  <button type="button" onClick={() => refreshData().catch(() => {})} className="mt-3 rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm font-semibold text-rose-900 hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700">Retry</button>
+                </div>
+              ) : events.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-emerald-300 bg-white px-5 py-8 text-center">
+                  <Calendar className="mx-auto h-8 w-8 text-emerald-700" aria-hidden="true" />
+                  <h3 className="mt-3 text-base font-bold text-slate-900">No events yet</h3>
+                  <p className="mt-1 text-sm text-slate-600">Create your organization’s first event to get started.</p>
+                  <button type="button" onClick={() => handleOpenCreateModal()} disabled={organizationLoading || !orgInfo} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#176B43] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#125735] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><Plus className="h-4 w-4" />Create event</button>
+                </div>
+              ) : filteredEventsList.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-7 text-center">
+                  <h3 className="text-sm font-bold text-slate-900">No events match these filters</h3>
+                  <p className="mt-1 text-sm text-slate-600">Try another status or search by event name, venue, or category.</p>
+                  <button type="button" onClick={clearEventCriteria} className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Clear search and filters</button>
                 </div>
               ) : (
                 filteredEventsList.map((evt) => (
-                  <div
-                    key={evt.id}
-                    onClick={() => handleViewEventDetails(evt)}
-                    className="p-4 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition flex flex-col md:flex-row md:items-center justify-between gap-4 group cursor-pointer"
-                  >
+                  <div key={evt.id} className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm focus-within:ring-2 focus-within:ring-emerald-700/30">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     {/* Left Column: 3D Icon + Title + Metadata */}
                     <div className="flex items-start gap-4 min-w-0">
                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-xs">
@@ -1057,9 +1177,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       </div>
 
                       <div className="min-w-0 space-y-1">
-                        <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-[#16834a] transition truncate">
-                          {evt.title}
-                        </h3>
+                        <button type="button" title={evt.title} onClick={() => handleViewEventDetails(evt)} className="block max-w-full truncate text-left text-sm font-extrabold text-slate-900 hover:text-[#16834a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 sm:max-w-2xl">{evt.title}</button>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-medium">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -1085,7 +1203,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     </div>
 
                     {/* Right Column: Status Pill + Actions (Preview / Attendance / Options) */}
-                    <div className="flex items-center justify-between md:justify-end gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3 md:justify-end md:border-t-0 md:pt-0">
                       <span className={`px-3 py-1 rounded-full text-[11px] font-bold shadow-xs ${evt.status === 'Ongoing'
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         : evt.status === 'Completed'
@@ -1125,6 +1243,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       />
                     </div>
 
+                    </div>
                   </div>
                 ))
               )}
@@ -1174,6 +1293,14 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
             {/* Event Selector & New Session Button */}
             <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={navigateToEvents}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-emerald-950 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                Back to organization events
+              </button>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:block">EVENT:</label>
                 <select
@@ -1684,13 +1811,18 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleSaveProfile}
-                      className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer"
+                      disabled={isProfileSaving}
+                      className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60"
                     >
                       <Check className="w-4 h-4" />
-                      <span>Save Changes</span>
+                      <span>{isProfileSaving ? 'Saving…' : 'Save Changes'}</span>
                     </button>
                     <button
-                      onClick={() => setIsEditingProfile(false)}
+                      onClick={() => {
+                        if (savedProfileData) setProfileData(savedProfileData)
+                        setProfileSaveError('')
+                        setIsEditingProfile(false)
+                      }}
                       className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition border border-white/20 cursor-pointer"
                     >
                       Cancel
@@ -1714,23 +1846,15 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
             <div className="space-y-5">
 
+              {profileSaveError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{profileSaveError}</p>}
+              {profileSaveNotice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{profileSaveNotice}</p>}
+
               {/* Organization Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Organization Name
                 </label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileData.name}
-                    onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-sm font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
-                  />
-                ) : (
-                  <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-sm font-extrabold text-slate-800">
-                    {profileData.name}
-                  </div>
-                )}
+                <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-sm font-extrabold text-slate-800">{profileData.name}</div>
               </div>
 
               {/* Description */}
@@ -1776,18 +1900,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   College
                 </label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileData.college_dept}
-                    onChange={(e) => setProfileData({ ...profileData, college_dept: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
-                  />
-                ) : (
-                  <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-bold text-slate-800">
-                    {profileData.college_dept}
-                  </div>
-                )}
+                <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-bold text-slate-800">{profileData.college_dept}</div>
               </div>
 
               {/* Facebook Page & Faculty Adviser Grid */}
@@ -1814,18 +1927,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Faculty Adviser
                   </label>
-                  {isEditingProfile ? (
-                    <input
-                      type="text"
-                      value={profileData.moderator_name}
-                      onChange={(e) => setProfileData({ ...profileData, moderator_name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#16834a]"
-                    />
-                  ) : (
-                    <div className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-extrabold text-slate-800">
-                      {profileData.moderator_name}
-                    </div>
-                  )}
+                  <div className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-extrabold text-slate-800">{profileData.moderator_name}</div>
                 </div>
               </div>
 
@@ -1864,7 +1966,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                 <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-4">
                   <div className="h-10 flex items-center justify-center flex-1">
-                    <img src={vaultSignatures.signatory_1_img || DEFAULT_SIG_1_IMG} alt="Sig 1" className="h-9 max-w-[140px] object-contain" />
+                    {vaultSignatures.signatory_1_img && <img src={vaultSignatures.signatory_1_img} alt="Primary organization signatory signature" className="h-9 max-w-[140px] object-contain" />}
                   </div>
                   <label className="px-3 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs">
                     <Upload className="w-3.5 h-3.5" />
@@ -1888,7 +1990,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                 <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-4">
                   <div className="h-10 flex items-center justify-center flex-1">
-                    <img src={vaultSignatures.signatory_2_img || DEFAULT_SIG_2_IMG} alt="Sig 2" className="h-9 max-w-[140px] object-contain" />
+                    {vaultSignatures.signatory_2_img && <img src={vaultSignatures.signatory_2_img} alt="Secondary organization signatory signature" className="h-9 max-w-[140px] object-contain" />}
                   </div>
                   <label className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs">
                     <Upload className="w-3.5 h-3.5" />
@@ -1938,254 +2040,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
       {/* 3.5. DIGITAL CERTIFICATES & SIGNATORY VAULT WORKSPACE VIEW               */}
       {/* ========================================================================= */}
       {activeTab === 'certificates' && (
-        <DigitalCertificatesWorkspace events={events} />
-      )}
-
-      {/* ========================================================================= */}
-      {/* 4. DEFAULT DASHBOARD / OVERVIEW VIEW                                      */}
-      {/* ========================================================================= */}
-      {(!activeTab || activeTab === 'overview' || activeTab === 'dashboard') && (
-        <div className="space-y-8 animate-in fade-in duration-200">
-
-          {/* Hero Organization Banner Card */}
-          <div className="bg-[#EFF7F0] dark:bg-[#21372A] p-6 sm:p-8 rounded-3xl shadow-xl border border-[#69A97C] dark:border-[#466B54] relative overflow-hidden">
-
-            {/* Top Organization Header Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative z-10">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#159552] border border-emerald-400/30 flex items-center justify-center text-white shadow-md shrink-0">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-[#17663B] dark:text-[#EFF6F1] tracking-tight">
-                    {orgInfo.name}
-                  </h1>
-                  <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
-                    {orgInfo.college} • {orgInfo.academic_year}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 self-end sm:self-auto">
-                <button
-                  onClick={handleDashboardCreateEvent}
-                  className="px-4 py-2.5 rounded-xl bg-[#159552] hover:bg-[#117A43] text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 text-white" />
-                  <span>Create Event</span>
-                </button>
-                <div className="rounded-xl bg-white p-1"><AchieveNestLogo variant="mark" size="compact" /></div>
-              </div>
-            </div>
-
-            {/* 4 Interactive Operational Metric Cards Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
-
-              <button
-                type="button"
-                onClick={() => setSearchParams({ tab: 'events' })}
-                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
-                title="Click to Manage All Events"
-              >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">EVENTS (AY 25-26)</p>
-                  <p className="text-xl font-extrabold text-slate-900">{metrics.events_this_year}</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSearchParams({ tab: 'attendance' })}
-                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
-                title="Click to Monitor Live Attendance Sessions"
-              >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">TOTAL ATTENDEES</p>
-                  <p className="text-xl font-extrabold text-slate-900">{metrics.total_participants}</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenCertificates}
-                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
-                title="View automatic attendance certificates"
-              >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
-                  <Award className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">ATTENDANCE CERTIFICATES</p>
-                  <p className="text-sm font-extrabold text-slate-900">View portfolio records</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSearchParams({ tab: 'profile' })}
-                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
-                title="Click to View Organization Profile & Roster"
-              >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">REGISTERED MEMBERS</p>
-                  <p className="text-xl font-extrabold text-slate-900">{metrics.active_members}</p>
-                </div>
-              </button>
-
-            </div>
-
-
-          </div>
-
-          {/* Events Showcase Grid */}
-          <div className="space-y-4">
-
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
-                Upcoming Events
-              </h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleOpenScanner()}
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-[#16834a] hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Live Attendance Scanner</span>
-                </button>
-                <button
-                  onClick={handleOpenCertificates}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Award className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Attendance Certificates</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 2x2 Events Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {events.filter(e => e.status !== 'Cancelled').map((evt) => {
-                const isOngoing = evt.status === 'Ongoing'
-                const isCompleted = evt.status === 'Completed'
-
-                return (
-                  <div
-                    key={evt.id}
-                    onClick={() => {
-                      setSearchParams({ tab: 'events' })
-                      handleViewEventDetails(evt)
-                    }}
-                    className="bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer"
-                  >
-                    {/* Upper 3D Graphic Banner */}
-                    <div className="h-36 bg-gradient-to-br from-emerald-800 via-slate-800 to-slate-900 p-5 relative flex items-center justify-between text-white overflow-hidden">
-
-                      {/* Status Badge & Options Menu */}
-                      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-[11px] font-bold shadow-xs ${isOngoing
-                          ? 'bg-emerald-400 text-emerald-950 border border-emerald-300'
-                          : isCompleted
-                            ? 'bg-slate-200 text-slate-800 border border-slate-300'
-                            : 'bg-emerald-100/90 text-emerald-900 border border-emerald-200'
-                          }`}>
-                          {evt.status}
-                        </span>
-
-                        <EventCardOptionsMenu
-                          event={evt}
-                          onViewDetails={(e) => {
-                            setSearchParams({ tab: 'events' })
-                            handleViewEventDetails(e)
-                          }}
-                          onMonitorAttendance={(id) => handleGoToAttendanceSession(id)}
-                          onLaunchScanner={(e) => handleOpenScanner(e)}
-                          onEditEvent={(e) => handleOpenEditModal(e)}
-                          onViewCertificates={handleOpenCertificates}
-                          onExportCSV={(e) => handleGoToAttendanceSession(e.id)}
-                          onCancelEvent={(id) => handleCancelEvent(id)}
-                        />
-                      </div>
-
-                      {/* Title overlay */}
-                      <div className="relative z-10 max-w-[70%] self-end">
-                        <h3 className="font-extrabold text-lg text-white leading-tight drop-shadow-xs group-hover:text-[#245F42] transition">
-                          {evt.title}
-                        </h3>
-                      </div>
-
-                      {/* 3D Graphic Icon */}
-                      <div className="relative z-10 shrink-0 transform group-hover:scale-110 transition duration-300">
-                        {renderBannerGraphic(evt.banner_type)}
-                      </div>
-
-                      <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-2xl"></div>
-                    </div>
-
-                    {/* Lower Details Content */}
-                    <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
-
-                      <div className="space-y-2 text-xs font-semibold text-slate-500">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                          <span>{evt.date} • {evt.time}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
-                          <span>{evt.venue}</span>
-                        </div>
-                      </div>
-
-                      {/* Participants Counter & Footer Action Buttons */}
-                      <div className="pt-3 border-t border-slate-100 space-y-3">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-slate-500">Total Participants</span>
-                          <span className="font-extrabold text-[#16834a] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{evt.participants_count} checked in</span>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSearchParams({ tab: 'events' })
-                              handleViewEventDetails(evt)
-                            }}
-                            className="flex-1 py-2 px-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-[#16834a] text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Preview</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleGoToAttendanceSession(evt.id)}
-                            className="flex-1 py-2 px-3 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                          >
-                            <QrCode className="w-3.5 h-3.5 text-white" />
-                            <span>Attendance</span>
-                          </button>
-                        </div>
-                      </div>
-
-                    </div>
-
-
-                  </div>
-                )
-              })}
-            </div>
-
-          </div>
-        </div>
+        <DigitalCertificatesWorkspace
+          events={events}
+          eventId={searchParams.get('eventId')}
+        />
       )}
 
           {/* ================= MODALS ================= */}
@@ -2195,6 +2053,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             onCreateEvent={createEvent}
             onUpdateEvent={updateEvent}
             editingEvent={editingEvent}
+            organizationName={profileData.name}
+            moderatorName={profileData.moderator_name}
           />
 
           <AttendanceScannerModal

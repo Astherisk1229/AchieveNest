@@ -19,22 +19,23 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
     assigned_roles: [CANONICAL_ROLES.OSAD_STAFF]
   }
 
-  it('verifies canonical navigation source has exactly 1 source and preserves 10/10 OSAD items', () => {
+  it('verifies the combined Student Management destination replaces three separate sidebar entries', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(10)
-    expect(NAVIGATION_CATALOG.length).toBeGreaterThanOrEqual(10)
+    expect(nav).toHaveLength(6)
+    expect(NAVIGATION_CATALOG.length).toBeGreaterThanOrEqual(9)
 
     const ids = nav.map(i => i.id)
     expect(ids).toContain('osad-dashboard')
-    expect(ids).toContain('osad-academic-structure')
-    expect(ids).toContain('osad-student-accounts')
-    expect(ids).toContain('osad-student-organizations')
+    expect(ids).toContain('osad-student-management')
+    expect(ids).not.toContain('osad-academic-structure')
+    expect(ids).not.toContain('osad-student-accounts')
+    expect(ids).not.toContain('osad-student-organizations')
     expect(ids).toContain('osad-password-resets')
     expect(ids).toContain('osad-award-categories')
     expect(ids).toContain('osad-award-candidate-review')
-    expect(ids).toContain('osad-certificate-templates')
-    expect(ids).toContain('osad-accreditation-reports')
-    expect(ids).toContain('osad-activity-log')
+    expect(ids).not.toContain('osad-certificate-templates')
+    expect(ids).not.toContain('osad-accreditation-reports')
+    expect(ids).not.toContain('osad-activity-log')
   })
 
   it('instantiates Sidebar component with currentUser and props', () => {
@@ -43,17 +44,11 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
     expect(sidebar.props.currentUser).toEqual(osadSession)
   })
 
-  it('verifies task-based workflow groups across the 10 destinations', () => {
+  it('verifies task-based workflow groups across the 6 destinations', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
     const groups = [...new Set(nav.map(i => i.workflowFamily))]
 
-    expect(groups).toEqual([
-      'overview',
-      'setup',
-      'evaluation',
-      'credentials',
-      'governance'
-    ])
+    expect(groups).toEqual(['overview', 'setup', 'evaluation'])
   })
 
   it('instantiates Topbar with isSidebarOpen and toggle callback', () => {
@@ -92,14 +87,16 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
     const studentNav = getAuthorizedNavigationForSession(studentSession)
     const osadNav = getAuthorizedNavigationForSession(osadSession)
 
-    expect(studentNav.map(i => i.id)).toContain('student-dashboard')
-    expect(studentNav.map(i => i.id)).not.toContain('osad-academic-structure')
+    expect(studentNav.map(i => i.id)).toContain('student-profile')
+    expect(studentNav.map(i => i.id)).not.toContain('student-dashboard')
+    expect(studentNav.map(i => i.id)).not.toContain('student-achievements')
+    expect(studentNav.map(i => i.id)).not.toContain('osad-student-management')
 
-    expect(osadNav.map(i => i.id)).toContain('osad-academic-structure')
+    expect(osadNav.map(i => i.id)).toContain('osad-student-management')
     expect(osadNav.map(i => i.id)).not.toContain('student-achievements')
   })
 
-  it('verifies all 10 OSAD navigation items have distinct icons and accessible labels', () => {
+  it('verifies all 5 OSAD navigation items have distinct icons and accessible labels', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
     nav.forEach(item => {
       expect(item.label).toBeDefined()
@@ -130,23 +127,22 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
 
     const hrNav = getAuthorizedNavigationForSession(hrSession)
     expect(hrNav.map(i => i.id)).toContain('hr-personnel-directory')
-    expect(hrNav.map(i => i.id)).not.toContain('osad-academic-structure')
+    expect(hrNav.map(i => i.id)).not.toContain('osad-student-management')
   })
 
-  it('verifies alias parameters resolve to authoritative OSAD navigation items', () => {
+  it('verifies remaining aliases resolve and retired modules have no entries', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    const academicItem = nav.find(i => i.id === 'osad-academic-structure')
-    const accountsItem = nav.find(i => i.id === 'osad-student-accounts')
+    const studentManagementItem = nav.find(i => i.id === 'osad-student-management')
     const awardsItem = nav.find(i => i.id === 'osad-award-categories')
     const reviewItem = nav.find(i => i.id === 'osad-award-candidate-review')
-    const reportsItem = nav.find(i => i.id === 'osad-accreditation-reports')
 
-    expect(academicItem.tab).toBe('academic-structure')
-    expect(accountsItem.tab).toBe('accounts')
+    expect(studentManagementItem.tab).toBe('student-management')
+    expect(studentManagementItem.path).toContain('section=accounts')
     expect(awardsItem.path).toBe('/osad/awards')
     expect(awardsItem.tab).toBeUndefined()
     expect(reviewItem.path).toBe('/osad/candidates')
     expect(reviewItem.tab).toBeUndefined()
-    expect(reportsItem.tab).toBe('accreditation-reports')
+    expect(nav.map(i => i.id)).not.toContain('osad-accreditation-reports')
+    expect(nav.map(i => i.id)).not.toContain('osad-activity-log')
   })
 })

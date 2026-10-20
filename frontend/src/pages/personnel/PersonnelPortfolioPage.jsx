@@ -461,7 +461,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
               <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
 
               <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide font-serif italic hidden sm:block">
-                Character, Competence and Culture in harmony
+                Character, Competence, and Culture in harmony
               </div>
             </div>
 

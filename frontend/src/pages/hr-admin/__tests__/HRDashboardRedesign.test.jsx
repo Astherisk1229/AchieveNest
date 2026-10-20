@@ -42,6 +42,7 @@ describe('HR Dashboard operational home contract', () => {
   it('keeps dashboard footer and scroll chrome suppressed', () => {
     expect(layout).toContain("location.pathname === '/hr/dashboard'")
     expect(layout).toContain('!isHrDashboard && <Footer />')
-    expect(layout).toContain('showScrollTop && !isHrDashboard')
+    expect(layout).not.toContain('showScrollTop')
+    expect(layout).not.toMatch(/Back to top/i)
   })
 })

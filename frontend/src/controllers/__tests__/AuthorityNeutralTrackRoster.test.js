@@ -46,12 +46,12 @@ describe('authority-neutral Ranking Period track roster', () => {
     expect(read('backend/app/Controllers/Api/ReviewerRankingRosterController.php')).toContain('$this->roster->list($actor, $cycleId, $trackKey, true)')
     // Authorization callers keep the managed-only default.
     expect(read('backend/app/Services/AnnualReviewImportService.php')).toContain("$this->rosterService->list($actor,$cycleId,(string)$period['personnel_group'])")
-    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain('item.can_manage === false ? <ReadOnlyActions item={item} />')
+    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain("item?.can_manage === false && <ReadOnlyActions item={item} />")
   })
 
   it('reuses the same roster for Annual Review imports and the shared page', () => {
     expect(read('backend/app/Services/AnnualReviewImportService.php')).toContain('$this->rosterService->list')
     expect(read('frontend/src/services/deanAnnualReviewService.js')).toContain('fetchReviewerTrackRoster')
-    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain('fetchReviewerTrackRoster(cycleId, trackKey, isPaged')
+    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain('requestedTracks.map(key => fetchReviewerTrackRoster(cycleId, key))')
   })
 })

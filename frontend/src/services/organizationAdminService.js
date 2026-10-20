@@ -110,6 +110,14 @@ export async function updateOrganization(id, payload) {
   return response?.data?.organization || response?.organization || response?.data || response
 }
 
+/** Update public-facing fields for the currently assigned moderator's organization. */
+export async function updateOrganizationModeratorProfile(id, payload) {
+  const response = await apiClient.patch(`/osad/organizations/${id}/moderator-profile`, payload, {
+    headers: getAuthHeaders('application/json')
+  })
+  return response?.data || response
+}
+
 /**
  * Adds academic programs to an organization's program scope.
  * @param {string} id

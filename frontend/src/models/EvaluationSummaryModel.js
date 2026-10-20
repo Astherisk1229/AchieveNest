@@ -58,9 +58,11 @@ export default class EvaluationSummaryModel {
         : item.criterion_name || 'Criterion unavailable'
     }))
 
-    // Every approved achievement that belongs to this award, counted or not (server decides both).
+    // Complete student portfolio. Award scoring applies only to verified records the server marks relevant.
     this.portfolio = (Array.isArray(payload.portfolio) ? payload.portfolio : []).map((record) => ({
       ...record,
+      awardRelevant: record.award_relevant === true || (record.award_relevant == null && (record.counted === true || (Array.isArray(record.criteria) && record.criteria.length > 0))),
+      verificationStatusLabel: String(record.verification_status || 'unknown').replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
       date: formatDateRange(record.activity_date, record.end_date),
       categoryLabel: [record.category_name, record.subcategory_name].filter(Boolean).join(' › '),
       pointsText: number(record.points),
@@ -74,6 +76,7 @@ export default class EvaluationSummaryModel {
     }))
     this.portfolioIds = new Set(this.portfolio.map((record) => record.record_id))
     this.countedCount = this.portfolio.filter((record) => record.counted).length
+    this.awardRelevantCount = this.portfolio.filter((record) => record.awardRelevant).length
 
     this.criteria = (Array.isArray(payload.criteria) ? payload.criteria : []).map((criterion) => ({
       ...criterion,

@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelEvidencePreviewModal from './modals/PersonnelEvidencePreviewModal'
 import AchievementPreviewModal from './modals/AchievementPreviewModal'
 import NonTeachingFacultySubmissionModal from './modals/NonTeachingFacultySubmissionModal'
 import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
-import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
 import OrganizationModeratorDashboardPage from './organization-moderator/OrganizationModeratorDashboardPage'
 import { HREvaluationSubmissionsPage } from '../hr-admin/HREvaluationSubmissionsPage'
 
@@ -42,6 +41,8 @@ import { isPersonnelAreaEntryAllowed, usesFacultyAcademicPortfolio } from '../..
 import { ALL_FILTER_KEY, normalizeTimelineFilterKey, timelineCategoryState, timelineFiltersFor, timelineFormatFor } from '../../config/personnelTimelineFilters'
 import { completedServiceYearsLabel, fetchOwnProfileFields } from '../../services/personnelProfileService'
 import { alertDialog, confirmDialog } from '../../components/ui/DialogProvider'
+
+const CoordinatorDashboardPage = lazy(() => import('./program-coordinator/CoordinatorDashboardPage'))
 
 /** Category badge: a readable type, or a warning with icon + text (never color alone). */
 function TimelineCategoryBadge({ state }) {
@@ -246,9 +247,11 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   return (
     <div>
       {activeRoleContext === 'program_coordinator' && activeTabParam !== 'faculty_view' ? (
-        <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
+        <Suspense fallback={<div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm font-medium text-slate-600">Loading coordinator workspace…</div>}>
+          <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
+        </Suspense>
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
-        <OrganizationModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
+        <OrganizationModeratorDashboardPage currentUser={currentUser} />
       ) : activeRoleContext === 'dean' && activeTabParam === 'workspace' ? (
         <HREvaluationSubmissionsPage key="dean-evaluation-workspace" />
       ) : (
@@ -269,7 +272,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
               <div className="absolute left-4 top-4 z-10 rounded-lg bg-white px-2 py-1 sm:left-8 sm:top-7">
                 <AchieveNestLogo variant="horizontal" size="compact" />
               </div>
-              <span className="absolute right-6 top-7 hidden text-right font-serif text-sm italic text-slate-500 dark:text-slate-400 lg:block">Character, Competence and Culture in harmony</span>
+              <span className="absolute right-6 top-7 hidden text-right font-serif text-sm italic text-slate-500 dark:text-slate-400 lg:block">Character, Competence, and Culture in harmony</span>
               <div className="mb-6 flex items-center gap-3 sm:absolute sm:left-8 sm:top-1/2 sm:mb-0 sm:-translate-y-1/2">
                 <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border-[3px] border-white bg-emerald-950 text-lg font-black text-emerald-100 shadow-md sm:h-28 sm:w-28 sm:border-4">
                   {profile.avatar_url

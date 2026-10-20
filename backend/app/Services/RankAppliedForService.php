@@ -13,6 +13,7 @@ class RankAppliedForService
 
     public function suggest(array $actor,string $personnelId,string $cycleId,string $trackId):array
     {
+        RankingCycleOperationalAvailability::assertEnabled($this->db, $trackId);
         $context=$this->context($personnelId,$cycleId,$trackId);
         $this->authorize($actor,$personnelId,$context['track']);
         $options=[];
@@ -60,6 +61,7 @@ class RankAppliedForService
     public function confirm(array $actor,string $decisionId,string $rankCode,?string $justification):array
     {
         $decision=$this->decision($decisionId);
+        RankingCycleOperationalAvailability::assertEnabled($this->db, (string) $decision['ranking_track_id']);
         if($decision['status']!=='suggested')throw new RuntimeException('RANK_APPLIED_FOR_DECISION_NOT_CONFIRMABLE');
         $context=$this->context($decision['personnel_profile_id'],$decision['ranking_cycle_id'],$decision['ranking_track_id']);
         $this->authorize($actor,$decision['personnel_profile_id'],$context['track']);

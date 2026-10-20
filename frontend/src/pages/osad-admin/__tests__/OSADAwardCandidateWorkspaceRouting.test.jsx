@@ -32,17 +32,17 @@ describe('OSAD Award Candidates route integrity', () => {
   it('filters only authoritative candidate fields without fabricating fallback rows', () => {
     const rows = [
       { candidate_id: 'a', student_name: 'Ada Lovelace', student_id_number: '2026001', award_definition_id: 'award-1', college_id: 'college-1', eligibility_source: 'portfolio_evaluation', is_candidate: true },
-      { candidate_id: 'b', student_name: 'Grace Hopper', student_id_number: '2026002', award_definition_id: 'award-2', college_id: 'college-2', eligibility_source: 'dean_nomination', is_candidate: true }
+      { candidate_id: 'b', student_name: 'Grace Hopper', student_id_number: '2026002', award_definition_id: 'award-2', college_id: 'college-2', eligibility_source: 'portfolio_evaluation', is_candidate: false }
     ]
     expect(filterAwardCandidates([], { search: '', award: 'all', college: 'all', status: 'all' })).toEqual([])
-    expect(filterAwardCandidates(rows, { search: '2026002', award: 'all', college: 'all', status: 'dean_nomination' })).toEqual([rows[1]])
+    expect(filterAwardCandidates(rows, { search: '2026002', award: 'all', college: 'all', status: 'below_threshold' })).toEqual([rows[1]])
   })
 
-  it('uses the aggregate API and existing detailed review route with explicit empty and error states', () => {
+  it('uses the aggregate API and embedded detailed review with explicit empty and error states', () => {
     const page = source('../OSADAwardCandidateReviewPage.jsx')
     expect(page).toContain('fetchCandidates()')
     expect(page).toContain('No award candidates are currently available for review.')
     expect(page).toContain("We couldn't load award candidates.")
-    expect(page).toContain('/osad/awards/${candidate.award_definition_id}/candidates/${candidate.student_profile_id}/review')
+    expect(page).toContain('<OSADEvaluationSummaryView award={award} studentId={candidate.student_profile_id} embedded')
   })
 })

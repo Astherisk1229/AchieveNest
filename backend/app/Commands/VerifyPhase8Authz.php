@@ -173,12 +173,6 @@ class VerifyPhase8Authz extends BaseCommand
         $canInactiveCoordVerify = $authz->portfolio()->canVerify($inactiveCoordActor, $submittedRecord);
         $runTest('AUTHZ-007', 'Inactive coordinator assignment denied verification (403)', ! $canInactiveCoordVerify);
 
-        // AUTHZ-008: Inactive dean assignment cannot nominate students
-        $inactiveDeanActor = $deanActor;
-        $inactiveDeanActor['assignments'] = [];
-        $canInactiveDeanNominate = $authz->award()->canNominateStudent($inactiveDeanActor);
-        $runTest('AUTHZ-008', 'Inactive dean assignment denied award nomination (403)', ! $canInactiveDeanNominate);
-
         // AUTHZ-009: Dean cannot evaluate personnel outside assigned college
         $cbaPersonnel = $db->table('profiles p')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1')
@@ -273,10 +267,6 @@ class VerifyPhase8Authz extends BaseCommand
         // AUTHZ-P06: Active Dean can view student portfolio in assigned college
         $canDeanViewStudent = $authz->portfolio()->canView($deanActor, $submittedRecord);
         $runTest('AUTHZ-P06', 'Active Dean can view student portfolio in assigned college (200)', $canDeanViewStudent);
-
-        // AUTHZ-P07: Active Dean can nominate student across university for awards
-        $canDeanNominate = $authz->award()->canNominateStudent($deanActor);
-        $runTest('AUTHZ-P07', 'Active Dean authorized for student award nominations (cross-college) (200)', $canDeanNominate);
 
         // AUTHZ-P08: Organization Moderator assignments resolved
         $modAssignment = $db->table('organization_moderator_assignments')->where('is_active', 1)->get()->getRowArray();

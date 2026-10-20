@@ -7,7 +7,6 @@ use App\Services\AwardEvaluationService;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Config\Database;
-use Throwable;
 
 class VerifyAwardsPhaseF extends BaseCommand
 {
@@ -75,38 +74,10 @@ class VerifyAwardsPhaseF extends BaseCommand
             $runTest('AUTO-002', 'Below threshold student outcome classified Not Qualified', true);
         }
 
-        // 6. DEAN-001: Dean Nomination Pathway Bypasses 80% with Zero Synthetic Score
-        $deanAssign = $db->table('dean_assignments')->where('is_active', 1)->get()->getRowArray();
-
-        if ($deanAssign !== null && $studentB !== null) {
-            try {
-                $evalService->createDeanNomination(
-                    $deanAssign['personnel_profile_id'],
-                    $deanAssign['id'],
-                    $studentB['id'],
-                    $award['id'],
-                    $cycle['id'],
-                    'Dean nomination for academic distinction.'
-                );
-            } catch (Throwable) {
-                // already nominated
-            }
-
-            $nomRow = $db->table('award_interview_eligibilities')
-                ->where('cycle_id', $cycle['id'])
-                ->where('award_definition_id', $award['id'])
-                ->where('student_profile_id', $studentB['id'])
-                ->where('eligibility_source', 'dean_nomination')
-                ->get()->getRowArray();
-            $runTest('DEAN-001', 'Dean nomination creates eligibility record with zero synthetic points', $nomRow !== null && $nomRow['potential_score'] === null);
-        } else {
-            $runTest('DEAN-001', 'Dean nomination creates eligibility record with zero synthetic points', true);
-        }
-
-        // 7. CONV-001: Queue Merges Both Automated & Dean Pathways
+        // 6. CONV-001: Candidate review queue contains only portfolio evaluations
         $queue = $candService->getCandidatesReviewQueue($cycle['id'], $award['id']);
         $hasQueue = ! empty($queue);
-        $runTest('CONV-001', 'Review queue converges both automated and nomination pathways', $hasQueue);
+        $runTest('CONV-001', 'Portfolio evaluation results populate the candidate review queue', $hasQueue);
 
         // 8. RANK-001: Deterministic Dense Ranking
         $allRanked = true;

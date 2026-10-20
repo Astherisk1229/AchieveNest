@@ -19,8 +19,8 @@ describe('Phase 5 item 6: student account lifecycle controls', () => {
   })
   it('actions depend on current status and a reason is required for suspend/archive', () => {
     const p = page()
-    expect(p).toContain("openLifecycleAction('suspend', user)")
-    expect(p).toContain("openLifecycleAction('restore', user)")
+    expect(p).toContain("onLifecycleAction('suspend', user)")
+    expect(p).toContain("onLifecycleAction('restore', user)")
     expect(p).toContain("A reason is required.")
   })
   it('dialog stays open and shows the backend error on failure', () => {

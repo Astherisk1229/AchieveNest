@@ -134,8 +134,9 @@ describe('roleContext utility & navigation registry', () => {
       const labels = nav.map(n => n.label)
 
       expect(labels).toContain('OSAD Dashboard')
-      expect(labels).toContain('College and Programs')
-      expect(labels).toContain('Certificate Templates')
+      expect(labels).toContain('Student Management')
+      expect(labels).not.toContain('College and Programs')
+      expect(labels).not.toContain('Certificate Templates')
       expect(labels).not.toContain('HR Dashboard')
       expect(labels).not.toContain('Edit Portfolio')
     })

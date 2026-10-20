@@ -73,7 +73,17 @@ export function formatRange(start, end) {
   return from.getFullYear() === to.getFullYear() ? `${formatDate(start, false)} – ${formatDate(end)}` : `${formatDate(start)} – ${formatDate(end)}`
 }
 
-export const localToday = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+// Ranking periods use the university's calendar day regardless of the browser or CI host zone.
+export const localToday = (now = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now)
+  const part = type => parts.find(item => item.type === type)?.value || ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
 
 export const dateOnly = value => value ? String(value).slice(0, 10) : ''
 

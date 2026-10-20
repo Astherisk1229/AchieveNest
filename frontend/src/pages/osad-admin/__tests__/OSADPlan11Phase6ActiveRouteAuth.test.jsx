@@ -20,10 +20,10 @@ describe('Plan 11 Phase 6 — Active Route & Authorization Consistency', () => {
       return currentCleanPath === itemCleanPath
     }
 
-    const accountsItem = { path: '/osad/dashboard?tab=accounts', tab: 'accounts' }
-    expect(isTabOrPathActive(accountsItem, '/osad/dashboard', 'accounts')).toBe(true)
-    expect(isTabOrPathActive(accountsItem, '/osad/dashboard', 'student-accounts')).toBe(true)
-    expect(isTabOrPathActive(accountsItem, '/osad/dashboard', 'overview')).toBe(false)
+    const studentManagementItem = { path: '/osad/dashboard?tab=student-management&section=accounts', tab: 'student-management' }
+    expect(isTabOrPathActive(studentManagementItem, '/osad/dashboard', 'student-management')).toBe(true)
+    expect(isTabOrPathActive(studentManagementItem, '/osad/dashboard', 'accounts')).toBe(false)
+    expect(isTabOrPathActive(studentManagementItem, '/osad/dashboard', 'overview')).toBe(false)
   })
 
   it('recomputes authorized navigation immediately upon role change without stale items', () => {
@@ -42,9 +42,9 @@ describe('Plan 11 Phase 6 — Active Route & Authorization Consistency', () => {
     const osadNav = getAuthorizedNavigationForSession(osadSession)
     const studentNav = getAuthorizedNavigationForSession(studentSession)
 
-    expect(osadNav.map(i => i.id)).toContain('osad-student-accounts')
-    expect(studentNav.map(i => i.id)).not.toContain('osad-student-accounts')
-    expect(studentNav.map(i => i.id)).toContain('student-dashboard')
+    expect(osadNav.map(i => i.id)).toContain('osad-student-management')
+    expect(studentNav.map(i => i.id)).not.toContain('osad-student-management')
+      expect(studentNav.map(i => i.id)).toContain('student-profile')
   })
 
   it('guarantees zero manual active-route duplication state across sidebar navigation', () => {

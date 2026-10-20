@@ -47,4 +47,15 @@ describe('global sidebar navigation metadata', () => {
     ])
     expect(personnelItems.map(item => item.label)).toEqual(['Profile', 'Portfolio'])
   })
+
+  it('keeps the Organization Moderator sidebar focused on Events and Organization Profile', () => {
+    const moderatorItems = NAVIGATION_CATALOG.filter(item =>
+      item.portal === 'personnel' && item.requiredActiveContexts?.includes(CANONICAL_ROLES.ORGANIZATION_MODERATOR)
+    )
+
+    expect(moderatorItems.map(item => item.id)).toEqual(['moderator-events', 'moderator-profile'])
+    expect(moderatorItems.map(item => item.label)).toEqual(['Events', 'Organization Profile'])
+    expect(moderatorItems[0].path).toBe('/personnel/dashboard?tab=events')
+    expect(moderatorItems[1].path).toBe('/personnel/dashboard?tab=profile')
+  })
 })

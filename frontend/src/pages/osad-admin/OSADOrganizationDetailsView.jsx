@@ -25,6 +25,7 @@ import { Button } from '../../components/ui/button'
 import {
   fetchOrganization,
   getOrganizationLogoUrl,
+  updateOrganization,
   removeOrganizationProgram,
   removeOrganizationModerator
 } from '../../services/organizationAdminService'
@@ -52,7 +53,8 @@ export default function OSADOrganizationDetailsView({
   onBack,
   onAssignModerator,
   colleges = [],
-  fallbackOrganization = null
+  fallbackOrganization = null,
+  onOrganizationChanged = null
 }) {
   const [orgData, setOrgData] = useState(fallbackOrganization)
   const [loading, setLoading] = useState(!fallbackOrganization)
@@ -114,6 +116,22 @@ export default function OSADOrganizationDetailsView({
 
   const isModeratorAssigned = Boolean(currentMod && currentMod.full_name && currentMod.full_name !== 'Unassigned')
   const isComplete = org.configuration_status === 'COMPLETE' || (orgScope !== 'program' && isModeratorAssigned) || (orgScope === 'program' && programs.length > 0 && isModeratorAssigned)
+  const isOrganizationActive = !org.status || org.status === 'active'
+
+  const handleToggleOrganizationStatus = async () => {
+    const nextStatus = isOrganizationActive ? 'inactive' : 'active'
+    setProcessingAction(true)
+    setActionError(null)
+    try {
+      const updated = await updateOrganization(org.id, { status: nextStatus })
+      if (updated) setOrgData(updated)
+      await onOrganizationChanged?.()
+    } catch (err) {
+      setActionError(err?.response?.data?.error?.message || err?.message || 'Failed to update organization status.')
+    } finally {
+      setProcessingAction(false)
+    }
+  }
 
   // Program Removal Handler
   const handleRemoveProgramConfirm = async () => {
@@ -196,28 +214,39 @@ export default function OSADOrganizationDetailsView({
           { label: org.code || 'Organization' }
         ]}
         title={org.name}
-        secondaryActions={
-          <button
-            type="button"
-            onClick={() => setIsEditModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
-          >
-            <Edit className="w-3.5 h-3.5 text-slate-500" />
-            <span>Edit Details</span>
-          </button>
-        }
+        secondaryActions={(
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleOrganizationStatus}
+              disabled={processingAction}
+              className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-700/50 dark:border-emerald-700 flex items-center gap-1.5 transition disabled:cursor-wait disabled:opacity-60"
+            >
+              <span>{processingAction ? 'Saving…' : isOrganizationActive ? 'Disable' : 'Enable'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+            >
+              <Edit className="w-3.5 h-3.5 text-slate-500" />
+              <span>Edit Details</span>
+            </button>
+          </div>
+        )}
         primaryAction={
           <button
             type="button"
+            disabled={!isOrganizationActive || processingAction}
             onClick={() => {
               if (typeof onAssignModerator === 'function') {
                 onAssignModerator(org)
               }
             }}
-            className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#126b3c] text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#126b3c] text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>{isModeratorAssigned ? 'Reassign Moderator' : 'Assign Moderator'}</span>
+            <span>{!isOrganizationActive ? 'Enable to assign moderator' : isModeratorAssigned ? 'Reassign Moderator' : 'Assign Moderator'}</span>
           </button>
         }
       />
@@ -357,7 +386,7 @@ export default function OSADOrganizationDetailsView({
         </div>
       </div>
 
-      {/* Academic Program Scope Section */}
+      {orgScope === 'program' ? (
       <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
@@ -424,7 +453,7 @@ export default function OSADOrganizationDetailsView({
                   <button
                     type="button"
                     onClick={() => setRemovingProgram(program)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-700 dark:hover:text-rose-300 dark:hover:bg-rose-950/40 transition cursor-pointer"
                     title={`Remove ${program.code} from scope`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -435,6 +464,18 @@ export default function OSADOrganizationDetailsView({
           </div>
         )}
       </div>
+      ) : (
+        <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            {orgScope === 'college' ? 'College-wide organization' : 'University-wide organization'}
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {orgScope === 'college'
+              ? `This organization covers students in ${org.college_name || 'its selected college'}, across all of that college’s academic programs.`
+              : 'This organization covers students across the university.'}
+          </p>
+        </div>
+      )}
 
       {/* Moderator Assignment History Section */}
       <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
@@ -500,7 +541,7 @@ export default function OSADOrganizationDetailsView({
           onClose={() => setIsEditModalOpen(false)}
           organization={org}
           colleges={colleges}
-          onSuccess={loadDetails}
+          onSuccess={async () => { await loadDetails(); await onOrganizationChanged?.() }}
         />
       )}
 

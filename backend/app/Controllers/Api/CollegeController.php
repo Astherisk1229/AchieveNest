@@ -43,13 +43,34 @@ class CollegeController extends Controller
         return $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
     }
 
-    protected function checkOSADAuthorization(?array $actor): bool
+    protected function canManageAcademicStructure(?array $actor): bool
     {
         if ($actor === null) {
             return false;
         }
 
         return $this->authService->governance()->canManageAcademicStructure($actor);
+    }
+
+    protected function canManageAcademicPrograms(?array $actor): bool
+    {
+        if ($actor === null) {
+            return false;
+        }
+
+        return $this->authService->governance()->canManageAcademicPrograms($actor);
+    }
+
+    protected function canViewProgramCoordinatorAssignments(?array $actor): bool
+    {
+        return $actor !== null
+            && $this->authService->governance()->canViewAcademicStructure($actor);
+    }
+
+    protected function canManageProgramCoordinatorAssignments(?array $actor): bool
+    {
+        return $actor !== null
+            && $this->authService->governance()->canAssignCoordinator($actor);
     }
 
     /**
@@ -121,8 +142,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage the College lifecycle.']], 403);
+        if (! $this->canManageAcademicStructure($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may manage academic structure.']], 403);
         }
 
         $payload = $this->request->getJSON(true) ?? [];
@@ -153,8 +174,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
+        if (! $this->canManageAcademicStructure($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may manage academic structure.']], 403);
         }
 
         $payload = $this->getRequestPayload();
@@ -185,8 +206,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
+        if (! $this->canManageAcademicStructure($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may manage academic structure.']], 403);
         }
 
         try {
@@ -217,8 +238,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
+        if (! $this->canManageAcademicStructure($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may manage academic structure.']], 403);
         }
 
         // Support JSON or multipart without decoding multipart boundaries as JSON.
@@ -301,8 +322,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic programs.']], 403);
+        if (! $this->canManageAcademicPrograms($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR or OSAD administrators may manage academic programs.']], 403);
         }
 
         $json = $this->request->getJSON(true);
@@ -332,8 +353,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage coordinator assignments.']], 403);
+        if (! $this->canViewProgramCoordinatorAssignments($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Academic structure access required.']], 403);
         }
 
         try {
@@ -356,8 +377,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage coordinator assignments.']], 403);
+        if (! $this->canViewProgramCoordinatorAssignments($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Academic structure access required.']], 403);
         }
 
         try {
@@ -380,7 +401,7 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
+        if (! $this->canManageProgramCoordinatorAssignments($actor)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage coordinator assignments.']], 403);
         }
 
@@ -408,8 +429,8 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic programs.']], 403);
+        if (! $this->canManageAcademicPrograms($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR or OSAD administrators may manage academic programs.']], 403);
         }
 
         $json = $this->request->getJSON(true);
@@ -439,7 +460,7 @@ class CollegeController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
-        if (! $this->checkOSADAuthorization($actor)) {
+        if (! $this->canManageProgramCoordinatorAssignments($actor)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage coordinator assignments.']], 403);
         }
 

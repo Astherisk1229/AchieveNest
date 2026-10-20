@@ -36,13 +36,13 @@ export class AdminSetupGuideController {
         const programCount = osadPrograms.length
         if (programCount >= 3) {
           status = SETUP_STEP_STATUS.COMPLETE
-          explanation = `${programCount} Academic Programs configured under Colleges.`
+          explanation = `${programCount} Academic Programs are available for student placement.`
         } else if (programCount > 0) {
           status = SETUP_STEP_STATUS.IN_PROGRESS
-          explanation = `${programCount} Academic Programs configured.`
+          explanation = `${programCount} Academic Programs are available.`
         } else {
           status = SETUP_STEP_STATUS.NOT_STARTED
-          explanation = 'No Academic Programs configured yet.'
+          explanation = 'No Academic Programs are available. Add programs under an existing college, or ask HR to set up the college first.'
         }
         completedCount = programCount
         requiredCount = 3
@@ -52,7 +52,7 @@ export class AdminSetupGuideController {
         if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Prerequisite missing.'
-          blockingReason = 'Create College and Programs before assigning Student accounts.'
+          blockingReason = 'Ask HR to add Colleges, then add programs under them before assigning Student accounts.'
         } else if (osadUsers.length > 0) {
           status = SETUP_STEP_STATUS.COMPLETE
           explanation = `${osadUsers.length} Students enrolled with program placement.`
@@ -71,7 +71,7 @@ export class AdminSetupGuideController {
         if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Prerequisite missing.'
-          blockingReason = 'Create Academic Programs before assigning Coordinators.'
+          blockingReason = 'Ask HR to add Academic Programs before coordinator coverage can be recorded.'
         } else if (completedCount >= requiredCount && requiredCount > 0) {
           status = SETUP_STEP_STATUS.COMPLETE
           explanation = `${completedCount} of ${requiredCount} Academic Programs assigned.`

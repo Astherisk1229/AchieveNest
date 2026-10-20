@@ -3,10 +3,24 @@ import { FileWarning, FileX2, LoaderCircle } from 'lucide-react'
 import portfolioService from '../../services/portfolioService'
 
 const PREVIEWABLE = ['application/pdf', 'image/jpeg', 'image/png']
+const MIME_BY_EXTENSION = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png'
+}
 
 /** The uploaded file itself (image, or first PDF page), fetched through the protected download endpoint. */
 export function evidenceMime(evidence) {
-  return evidence?.detected_mime_type || evidence?.mime_type || ''
+  const declared = String(evidence?.detected_mime_type || evidence?.mime_type || '')
+    .split(';', 1)[0]
+    .trim()
+    .toLowerCase()
+  if (declared === 'image/jpg' || declared === 'image/pjpeg') return 'image/jpeg'
+  if (PREVIEWABLE.includes(declared)) return declared
+
+  const extension = String(evidence?.original_filename || '').split('.').pop()?.toLowerCase()
+  return MIME_BY_EXTENSION[extension] || declared
 }
 
 export function useEvidenceObjectUrl(evidence) {

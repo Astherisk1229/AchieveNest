@@ -294,7 +294,6 @@ class AwardEvaluationPersistenceService
                 'eligibility_source'  => 'portfolio_based',
                 'pathway'             => 'automated_threshold',
                 'evaluation_id'       => $evaluationId,
-                'dean_nomination_id'  => null,
                 'potential_score'     => $potential,
                 'eligible_at'         => $now,
                 'status'              => 'eligible',

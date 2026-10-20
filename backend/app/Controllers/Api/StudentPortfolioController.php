@@ -315,6 +315,178 @@ class StudentPortfolioController extends Controller
     }
 
     /**
+     * POST /api/v1/portfolio/{id}/revision
+     * Creates an editable copy of an approved achievement for coordinator review.
+     */
+    public function createRevision(string $id): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (! ValidationHelper::validateUuid($id)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record UUID.']], 422);
+        }
+
+        $db = $this->getDb();
+        $createdPaths = [];
+        $mutationOpen = false;
+        try {
+            $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
+            if ($record === null) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+            }
+            if (! $this->authz->portfolio()->canCreateRevision($actor, $record)) {
+                return $this->respond(['error' => ['code' => 'REVISION_FORBIDDEN', 'message' => 'Only your own verified achievement can be edited.']], 403);
+            }
+
+            // Event-generated achievements predate the student form fields and only store
+            // the event link. Resolve those authoritative event values into the revision so
+            // the edit form can show the activity and host organization instead of blanks.
+            $structuredMetadata = is_array($record['structured_metadata'] ?? null)
+                ? $record['structured_metadata']
+                : (json_decode((string) ($record['structured_metadata'] ?? '{}'), true) ?: []);
+            $originEventId = trim((string) ($structuredMetadata['origin_event_id'] ?? ''));
+            if ($originEventId !== '') {
+                $event = $db->table('events e')
+                    ->select('e.title, o.name AS organization_name')
+                    ->join('organizations o', 'o.id = e.organization_id', 'left')
+                    ->where('e.id', $originEventId)
+                    ->get()->getRowArray();
+                if ($event !== null) {
+                    if (empty($structuredMetadata['activity_name']) && ! empty($event['title'])) {
+                        $structuredMetadata['activity_name'] = $event['title'];
+                    }
+                    if (empty($structuredMetadata['organization_name']) && ! empty($event['organization_name'])) {
+                        $structuredMetadata['organization_name'] = $event['organization_name'];
+                    }
+                }
+            }
+
+            // Reopen an editable copy if an earlier click already created one. This
+            // prevents a second click (or reopening the page) from locking the student
+            // out with REVISION_ALREADY_IN_PROGRESS.
+            $existingRevision = $db->table('student_portfolio_records')
+                ->where('revision_of_record_id', $id)
+                ->whereIn('status', ['draft', 'submitted', 'revision_requested'])
+                ->orderBy('updated_at', 'DESC')
+                ->get()->getRowArray();
+            if ($existingRevision !== null) {
+                $existingMetadata = is_array($existingRevision['structured_metadata'] ?? null)
+                    ? $existingRevision['structured_metadata']
+                    : (json_decode((string) ($existingRevision['structured_metadata'] ?? '{}'), true) ?: []);
+                // Existing drafts may have been created before event-backed values were
+                // copied into revisions. Backfill only missing values, preserving edits.
+                $mergedMetadata = array_merge($structuredMetadata, $existingMetadata);
+                if (in_array($existingRevision['status'], ['draft', 'revision_requested'], true)
+                    && $mergedMetadata !== $existingMetadata) {
+                    $db->table('student_portfolio_records')->where('id', $existingRevision['id'])
+                        ->update(['structured_metadata' => json_encode($mergedMetadata), 'updated_at' => date('Y-m-d H:i:s')]);
+                }
+                if (in_array($existingRevision['status'], ['draft', 'revision_requested'], true)) {
+                    return $this->respond(['data' => [
+                        'id' => $existingRevision['id'],
+                        'status' => $existingRevision['status'],
+                        'revision_of_record_id' => $id,
+                    ]], 200);
+                }
+                return $this->respond(['error' => [
+                    'code' => 'REVISION_ALREADY_SUBMITTED',
+                    'message' => 'This edit is already with your coordinator. You can edit it again after it is returned for changes.',
+                ]], 409);
+            }
+
+            $revisionId = $this->genUuid();
+            $now = date('Y-m-d H:i:s');
+            $evidenceRows = $db->table('student_portfolio_evidence')
+                ->where('portfolio_record_id', $id)->where('status', 'active')->get()->getResultArray();
+            $revisionEvidence = [];
+            // Perform file I/O before opening the database transaction. Each revision owns
+            // its files, while the original verified copy remains intact.
+            foreach ($evidenceRows as $evidence) {
+                $sourcePath = $this->storage->resolveAbsolutePath((string) $evidence['storage_path']);
+                if ($sourcePath === null) {
+                    throw new \RuntimeException('REVISION_EVIDENCE_UNAVAILABLE');
+                }
+                $extension = strtolower(pathinfo((string) $evidence['original_filename'], PATHINFO_EXTENSION));
+                $stored = $this->storage->storeFile($sourcePath, 'student', (string) $record['student_profile_id'], $revisionId, $extension);
+                $createdPaths[] = $stored['storage_path'];
+                $revisionEvidence[] = [
+                    'id' => $this->genUuid(),
+                    'portfolio_record_id' => $revisionId,
+                    'storage_path' => $stored['storage_path'],
+                    'original_filename' => $evidence['original_filename'],
+                    'mime_type' => $evidence['mime_type'],
+                    'detected_mime_type' => $evidence['detected_mime_type'] ?? $evidence['mime_type'],
+                    'byte_size' => $stored['byte_size'],
+                    'checksum' => $stored['sha256'],
+                    'sha256' => $stored['sha256'],
+                    'evidence_type' => $evidence['evidence_type'],
+                    'uploaded_by' => $actor['profile']['id'],
+                    'uploaded_at' => $now,
+                    'security_status' => $evidence['security_status'],
+                    'malware_scanner' => $evidence['malware_scanner'],
+                    'security_validated_at' => $evidence['security_validated_at'],
+                    'status' => 'active',
+                ];
+            }
+
+            $this->beginMutation($db);
+            $mutationOpen = true;
+            $lockedRecord = $this->lockRecord($db, $id);
+            if ($lockedRecord === null || ! $this->authz->portfolio()->canCreateRevision($actor, $lockedRecord)) {
+                return $this->respond(['error' => ['code' => 'REVISION_BASE_CHANGED', 'message' => 'The verified achievement changed while the edit was starting. Reload and try again.']], 409);
+            }
+            $activeRevision = $db->table('student_portfolio_records')
+                ->where('revision_of_record_id', $id)
+                ->whereIn('status', ['draft', 'submitted', 'revision_requested'])
+                ->orderBy('updated_at', 'DESC')
+                ->get()->getRowArray();
+            if ($activeRevision !== null) {
+                if (in_array($activeRevision['status'], ['draft', 'revision_requested'], true)) {
+                    return $this->respond(['data' => [
+                        'id' => $activeRevision['id'],
+                        'status' => $activeRevision['status'],
+                        'revision_of_record_id' => $id,
+                    ]], 200);
+                }
+                return $this->respond(['error' => [
+                    'code' => 'REVISION_ALREADY_SUBMITTED',
+                    'message' => 'This edit is already with your coordinator. You can edit it again after it is returned for changes.',
+                ]], 409);
+            }
+            $db->table('student_portfolio_records')->insert([
+                'id' => $revisionId,
+                'student_profile_id' => $record['student_profile_id'],
+                'category_id' => $record['category_id'],
+                'subcategory_id' => $record['subcategory_id'],
+                'title' => $record['title'],
+                'organizer_or_body' => $record['organizer_or_body'],
+                'occurrence_date' => $record['occurrence_date'],
+                'start_date' => $record['start_date'],
+                'end_date' => $record['end_date'],
+                'description' => $record['description'],
+                'structured_metadata' => json_encode($structuredMetadata),
+                'status' => 'draft',
+                'revision_of_record_id' => $id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            foreach ($revisionEvidence as $evidence) $db->table('student_portfolio_evidence')->insert($evidence);
+            $this->commitMutation($db);
+            $mutationOpen = false;
+            $createdPaths = [];
+            return $this->respond(['data' => ['id' => $revisionId, 'status' => 'draft', 'revision_of_record_id' => $id]], 201);
+        } catch (Throwable $error) {
+            log_message('error', '[StudentPortfolioController::createRevision] Could not create revision for ' . $id . ': ' . $error->getMessage());
+            return $this->respond(['error' => ['code' => 'REVISION_CREATE_FAILED', 'message' => 'A separate editable copy could not be created. The verified achievement is unchanged.']], 500);
+        } finally {
+            if ($mutationOpen) $db->transRollback();
+            foreach ($createdPaths as $path) $this->storage->deletePhysicalFile($path);
+        }
+    }
+
+    /**
      * Resolves certificate lifecycle projection for a set of portfolio records in batch.
      *
      * Precedence: ISSUED > REVOKED > SUPERSEDED > NONE
@@ -494,6 +666,67 @@ class StudentPortfolioController extends Controller
             $record[$key] = $value;
         }
         return $record;
+    }
+
+    /**
+     * DELETE /api/v1/portfolio/{id}
+     * Permanently removes a student's own draft and its attached evidence.
+     */
+    public function deleteDraft(string $id): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (! ValidationHelper::validateUuid($id)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record UUID.']], 422);
+        }
+
+        $db = $this->getDb();
+        $this->beginMutation($db);
+        $mutationOpen = true;
+        $evidenceRows = [];
+        try {
+            $record = $this->lockRecord($db, $id);
+            if ($record === null) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+            }
+            if (! $this->authz->portfolio()->canDelete($actor, $record)) {
+                return $this->respond(['error' => ['code' => 'DRAFT_DELETE_FORBIDDEN', 'message' => 'Only your own draft can be deleted.']], 403);
+            }
+
+            $evidenceRows = $db->table('student_portfolio_evidence')
+                ->where('portfolio_record_id', $id)
+                ->get()->getResultArray();
+            $db->table('student_portfolio_records')
+                ->where('id', $id)
+                ->where('student_profile_id', $actor['profile']['id'])
+                ->where('status', 'draft')
+                ->delete();
+            if ($db->affectedRows() !== 1) {
+                return $this->respond(['error' => ['code' => 'DRAFT_DELETE_CONFLICT', 'message' => 'This draft changed and could not be deleted. Reload and try again.']], 409);
+            }
+
+            $this->commitMutation($db);
+            $mutationOpen = false;
+        } catch (Throwable $error) {
+            log_message('error', '[StudentPortfolioController::deleteDraft] Could not delete draft ' . $id . ': ' . $error->getMessage());
+            return $this->respond(['error' => ['code' => 'DRAFT_DELETE_FAILED', 'message' => 'The draft could not be deleted. Please try again.']], 500);
+        } finally {
+            if ($mutationOpen) {
+                $db->transRollback();
+            }
+        }
+
+        // Delete physical files only after the database commit, so a failed transaction
+        // never leaves an existing draft without its evidence.
+        foreach ($evidenceRows as $evidence) {
+            if (! empty($evidence['storage_path']) && ! $this->storage->deletePhysicalFile((string) $evidence['storage_path'])) {
+                log_message('warning', '[StudentPortfolioController::deleteDraft] Evidence cleanup failed for deleted record ' . $id . '.');
+            }
+        }
+
+        return $this->respond(['data' => ['message' => 'Draft and attached evidence deleted.', 'id' => $id]], 200);
     }
 
     /**
@@ -1235,10 +1468,10 @@ class StudentPortfolioController extends Controller
             if ($startDate !== '' && $endDate !== '' && $endDate < $startDate) {
                 return $this->respond(['error' => ['code' => 'INVALID_DATE_RANGE', 'message' => 'End date cannot be before start date.']], 422);
             }
-            // Keep the existing happened-in-the-past rule when the selected configured contract
-            // provides a complete calendar date. Academic-year/partial periods remain date-free.
-            if ($summary === null && (($startDate !== '' && \App\Helpers\ValidationHelper::isFutureDate($startDate))
-                || ($endDate !== '' && \App\Helpers\ValidationHelper::isFutureDate($endDate)))) {
+            // Achievements must already have happened, including dates derived from configured
+            // structured fields. The schema validator separately checks partial date periods.
+            if (($startDate !== '' && \App\Helpers\ValidationHelper::isFutureDate($startDate))
+                || ($endDate !== '' && \App\Helpers\ValidationHelper::isFutureDate($endDate))) {
                 return $this->respond(['error' => ['code' => 'FUTURE_DATE', 'message' => 'Achievement dates cannot be in the future.']], 422);
             }
 
@@ -1247,7 +1480,28 @@ class StudentPortfolioController extends Controller
                 ->where('status', 'active')
                 ->where('security_status', 'clean')
                 ->countAllResults();
-            if ($evidenceCount < 1) {
+            $verifiedGeneratedCertificate = false;
+            if ($evidenceCount < 1
+                && $db->fieldExists('revision_of_record_id', 'student_portfolio_records')
+                && ! empty($record['revision_of_record_id'])) {
+                $verifiedOriginal = $db->table('student_portfolio_records')
+                    ->select('id, structured_metadata')
+                    ->where('id', $record['revision_of_record_id'])
+                    ->where('student_profile_id', $record['student_profile_id'])
+                    ->where('status', 'verified')
+                    ->get()->getRowArray();
+                if ($verifiedOriginal !== null) {
+                    $originalMetadata = is_array($verifiedOriginal['structured_metadata'] ?? null)
+                        ? $verifiedOriginal['structured_metadata']
+                        : (json_decode((string) ($verifiedOriginal['structured_metadata'] ?? '{}'), true) ?: []);
+                    $verifiedGeneratedCertificate = in_array(
+                        $originalMetadata['automatic_attendance_certificate'] ?? false,
+                        [true, 'true', 1, '1'],
+                        true
+                    );
+                }
+            }
+            if ($evidenceCount < 1 && ! $verifiedGeneratedCertificate) {
                 return $this->respond(['error' => [
                     'code' => 'CLEAN_EVIDENCE_REQUIRED',
                     'message' => 'At least one supporting evidence file that passed the security scan is required before submission.',
@@ -1255,12 +1509,23 @@ class StudentPortfolioController extends Controller
             }
 
             $duplicate = 0;
+            // Keep submissions working while a deployment is between schema versions.
+            // The revision migration adds this optional lineage column; duplicate detection
+            // still compares the achievement data when an older database lacks it.
+            $hasRevisionLineage = $db->fieldExists('revision_of_record_id', 'student_portfolio_records');
+            $revisionFamilyIds = [(string) $record['id']];
+            $parentId = $hasRevisionLineage ? (string) ($record['revision_of_record_id'] ?? '') : '';
+            while ($hasRevisionLineage && $parentId !== '' && ! in_array($parentId, $revisionFamilyIds, true)) {
+                $revisionFamilyIds[] = $parentId;
+                $parent = $db->table('student_portfolio_records')->select('revision_of_record_id')->where('id', $parentId)->get()->getRowArray();
+                $parentId = (string) ($parent['revision_of_record_id'] ?? '');
+            }
             $fingerprint = $summary !== null
                 ? $this->recordSummary->fingerprint((string) $record['category_id'], (string) $record['subcategory_id'], $metadataResult['sanitized_metadata'])
                 : null;
             if ($fingerprint !== null) {
                 $candidates = $db->table('student_portfolio_records')
-                    ->select('id, structured_metadata')
+                    ->select($hasRevisionLineage ? 'id, revision_of_record_id, structured_metadata' : 'id, structured_metadata')
                     ->where('student_profile_id', $record['student_profile_id'])
                     ->where('category_id', $record['category_id'])
                     ->where('subcategory_id', $record['subcategory_id'])
@@ -1268,6 +1533,10 @@ class StudentPortfolioController extends Controller
                     ->whereNotIn('status', ['rejected'])
                     ->get()->getResultArray();
                 foreach ($candidates as $candidate) {
+                    if (in_array((string) $candidate['id'], $revisionFamilyIds, true)
+                        || ($hasRevisionLineage && in_array((string) ($candidate['revision_of_record_id'] ?? ''), $revisionFamilyIds, true))) {
+                        continue;
+                    }
                     $candidateMetadata = is_array($candidate['structured_metadata'] ?? null)
                         ? $candidate['structured_metadata']
                         : (json_decode((string) ($candidate['structured_metadata'] ?? '{}'), true) ?: []);
@@ -1277,15 +1546,22 @@ class StudentPortfolioController extends Controller
                     }
                 }
             } elseif ($summary === null && $startDate !== '') {
-                $duplicate = $db->table('student_portfolio_records')
+                $candidates = $db->table('student_portfolio_records')
+                    ->select($hasRevisionLineage ? 'id, revision_of_record_id' : 'id')
                     ->where('student_profile_id', $record['student_profile_id'])
                     ->where('category_id', $record['category_id'])
                     ->where('subcategory_id', $record['subcategory_id'])
                     ->where('title', $title)
                     ->where('start_date', $startDate)
-                    ->where('id !=', $id)
                     ->whereNotIn('status', ['rejected'])
-                    ->countAllResults();
+                    ->get()->getResultArray();
+                foreach ($candidates as $candidate) {
+                    if (! in_array((string) $candidate['id'], $revisionFamilyIds, true)
+                        && (! $hasRevisionLineage || ! in_array((string) ($candidate['revision_of_record_id'] ?? ''), $revisionFamilyIds, true))) {
+                        $duplicate = 1;
+                        break;
+                    }
+                }
             }
             if ($duplicate > 0) {
                 return $this->respond(['error' => ['code' => 'DUPLICATE_ACHIEVEMENT', 'message' => 'A matching achievement record already exists. Review the existing record instead of submitting a duplicate.']], 409);
@@ -1365,8 +1641,10 @@ class StudentPortfolioController extends Controller
                 'recipient_profile_id' => $routing['coordinator_profile_id'],
                 'actor_profile_id'     => $actor['profile']['id'],
                 'notification_type'    => 'student_achievement_submitted',
-                'title'                => 'Student Achievement Submitted',
-                'message'              => "A student achievement '{$title}' is ready for verification.",
+                'title'                => ! empty($record['revision_of_record_id']) ? 'Achievement Edit Submitted' : 'Student Achievement Submitted',
+                'message'              => ! empty($record['revision_of_record_id'])
+                    ? "An updated version of '{$title}' is ready for verification. The current verified version remains active until approval."
+                    : "A student achievement '{$title}' is ready for verification.",
                 'reference_type'       => 'student_portfolio_records',
                 'reference_id'         => $id,
                 'is_mandatory'         => 1,
@@ -1669,6 +1947,27 @@ class StudentPortfolioController extends Controller
                 ]);
 
                 if ($targetStatus === 'verified') {
+                    if (! empty($record['revision_of_record_id'])) {
+                        $originalId = (string) $record['revision_of_record_id'];
+                        $db->table('student_portfolio_records')
+                            ->where('id', $originalId)->where('status', 'verified')
+                            ->update(['status' => 'archived', 'updated_at' => $now]);
+                        if ($db->affectedRows() !== 1) {
+                            $db->transRollback();
+                            $mutationOpen = false;
+                            return $this->respond(['error' => ['code' => 'REVISION_BASE_CHANGED', 'message' => 'The previously verified achievement changed. Reload the review before approving this revision.']], 409);
+                        }
+                        $db->table('student_portfolio_verification_events')->insert([
+                            'id' => $this->genUuid(),
+                            'portfolio_record_id' => $originalId,
+                            'actor_profile_id' => $actor['profile']['id'],
+                            'action' => 'superseded',
+                            'previous_status' => 'verified',
+                            'new_status' => 'archived',
+                            'remarks' => 'Superseded by approved achievement revision ' . $id,
+                            'occurred_at' => $now,
+                        ]);
+                    }
                     // Committed with the approval: scoring was requested for this record.
                     $db->table('student_portfolio_verification_events')->insert([
                         'id'                  => $this->genUuid(),

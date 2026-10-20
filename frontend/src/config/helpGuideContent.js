@@ -86,13 +86,13 @@ const ROLE_TERMS = Object.freeze({
 
 export const ROLE_HELP_TOPICS = Object.freeze({
   [CANONICAL_ROLES.STUDENT]: [
-    topic('getting-started', 'Getting Started', 'Start by checking your student workspace, then add achievements with their supporting documents.', [
-      list('A useful first visit', ['Review the Student Dashboard and profile information.', 'Open Achievements and check existing records and statuses.', 'For a new achievement, enter the record details, select its category and subcategory, and attach the supporting document requested by the form.', 'Submit the record and monitor its status or notifications for the reviewer’s decision.', 'Use Portfolio to review the verified records available there.'])
+    topic('getting-started', 'Getting Started', 'Use Profile as your home for achievement records, then use Portfolio for the verified record.', [
+      list('A useful first visit', ['Open Profile to review your student details, summary counts, and achievement repository.', 'In the repository, check existing records and their review statuses or choose Add Achievement to create one.', 'Select the category and subcategory, complete the requested details, and attach the supporting document.', 'Submit the record and monitor its status or notifications for the reviewer’s decision.', 'Use Portfolio to review the verified records available there.'])
     ]),
-    topic('student-dashboard', 'Dashboard Guide', 'The Student Dashboard is the entry point for your student workspace and current achievement activity.', [
-      text('What to do', 'Review the information and activity shown on the dashboard. Use Achievements to create or update eligible records, and Portfolio to review the records presented there.')
+    topic('student-profile', 'Profile Guide', 'Profile combines your student summary with the achievement repository.', [
+      text('What to do', 'Review your student details and achievement counts at the top. Search, filter, and sort the repository to find records of any status. Add achievements here, then use Portfolio to review verified records.')
     ]),
-    topic('student-achievements', 'Achievements Guide', 'Record achievements with enough detail and proof for an authorized reviewer to assess them.', [
+    topic('achievement-records', 'Achievement Records Guide', 'Record achievements with enough detail and proof for an authorized reviewer to assess them.', [
       list('Create a record', ['Choose Add Achievement.', 'Select the category and subcategory that best describe the record.', 'Complete the fields requested for that classification.', 'Attach the supporting evidence required by the form, then submit.', 'Use the status filter or open the record to review a return message.']),
       text('Status meanings', 'Draft: saved but not submitted. Pending Review (submitted): waiting for the assigned reviewer. Returned: the reviewer requested a correction; review the remarks and edit if the record is available. Verified: accepted by a reviewer and available to the Portfolio workflow. Rejected: not accepted. Archived: retained as an archived record.')
     ]),
@@ -114,11 +114,11 @@ export const ROLE_HELP_TOPICS = Object.freeze({
   ],
   [CANONICAL_ROLES.ORGANIZATION_MODERATOR]: [
     topic('getting-started', 'Getting Started', 'Start in the organization workspace assigned to your moderator role.', [
-      list('A useful first visit', ['Review the Organization Profile and confirm you are working in the correct organization.', 'Use Events & Activities to manage organization events.', 'Use Attendance Management for attendance workflows available to your role.', 'Issue attendance certificates only through the available certificate workflow.', 'Check the status and messages shown for each activity.'])
+      list('A useful first visit', ['Review the Organization Profile and confirm you are working in the correct organization.', 'Use Events to create and manage events, attendance, and certificates.', 'Check the status and messages shown for each activity.'])
     ]),
     topic('moderator-workspace', 'Organization Workspace', 'The moderator workspace provides organization event, attendance, and certificate actions.', [
       text('Scope', 'Organization Moderator access is tied to active organization assignments. The workspace only exposes actions authorized for your current role and scope.'),
-      text('Events and attendance', 'Use the Events & Activities and Attendance Management pages for the records they own. Follow the validation and status feedback shown by each form before considering an action complete.'),
+      text('Events and attendance', 'Use Events to manage event details, attendance, and related certificate records. Follow the validation and status feedback shown by each workflow before considering an action complete.'),
       text('Certificates', 'Attendance certificates are issued from the certificate workflow when its record and validation requirements are satisfied. The repository does not define one universal certificate status guide for every organization action.')
     ])
   ],
@@ -193,19 +193,15 @@ export const ROLE_HELP_TOPICS = Object.freeze({
     }
   ],
   [CANONICAL_ROLES.OSAD_STAFF]: [
-    topic('getting-started', 'Getting Started', 'OSAD work covers the student and organization setup, awards, certificates, and governance pages available to your account.', [
-      list('A useful first visit', ['Review the OSAD Dashboard and its workflow groups.', 'Use College and Programs, Student Accounts, or Student Organizations for the relevant setup work.', 'Use Awards & Scoring Criteria and Award Candidates for award workflows.', 'Use Certificate Templates for certificate configuration.', 'Check reports and the activity log for governance information available to OSAD.'])
+    topic('getting-started', 'Getting Started', 'OSAD work covers student and organization management, program management, and awards.', [
+      list('A useful first visit', ['Review the OSAD Dashboard and its workflow groups.', 'Use Student Management to open Student Accounts, manage programs under HR-maintained colleges, or manage Student Organizations.', 'Use Awards & Scoring Criteria and Award Candidates for award workflows.'])
     ]),
-    topic('osad-setup', 'Student & Organization Setup', 'Manage the academic structure, student account, and student organization records available to OSAD.', [
-      text('Scope', 'Pages are permission-filtered by the active OSAD role. Forms validate the required fields and available actions; use their on-screen status and feedback to confirm changes.')
+    topic('osad-setup', 'Student Management', 'Manage student accounts, academic programs, and student organizations. Colleges and departments are maintained by HR.', [
+      text('Scope', 'OSAD can add, edit, enable, or disable programs under an existing college. HR maintains colleges and departments. Select existing colleges and programs when associating student or organization records.')
     ]),
     topic('osad-awards', 'Awards & Candidate Review', 'Use the awards catalog, scoring criteria, and candidate review pages for OSAD award workflows.', [
       text('Review', 'Open the relevant award or candidate and follow the scoring, review, and decision actions presented by that workflow. Criteria and eligibility are maintained by the system; this guide does not restate or change scoring rules.')
     ]),
-    topic('osad-certificates', 'Certificates & Reports', 'Manage certificate templates and review available accreditation and governance reports.', [
-      text('Templates', 'The Certificate Templates workflow provides template families and versions. Follow its validation and publish or edit state before relying on a template.'),
-      text('Reports', 'Accreditation Reports and the OSAD Activity Log show the information available to your active permissions.')
-    ])
   ]
 })
 

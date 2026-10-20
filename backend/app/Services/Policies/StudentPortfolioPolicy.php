@@ -15,6 +15,27 @@ class StudentPortfolioPolicy
         return $this->db ??= db_connect();
     }
 
+    /** A final portal submission locks the student's shared portfolio until OSAD reopens it. */
+    private function hasFinalPortalSubmission(string $studentProfileId): bool
+    {
+        $db = $this->getDb();
+        // The portal feature is optional on installations that have not applied its migration.
+        // Avoid issuing a missing-table query because CI4 marks the surrounding transaction failed.
+        $table = $db->prefixTable('osad_portfolio_submission_access');
+        if (! $db->tableExists($table, false)) return false;
+
+        try {
+            return $db->table('osad_portfolio_submission_access')
+                ->where('student_profile_id', $studentProfileId)
+                ->where('submission_state', 'submitted')
+                ->countAllResults() > 0;
+        } catch (\Throwable $error) {
+            // Other database errors fail closed so a temporary query failure cannot unlock writes.
+            log_message('error', 'Unable to verify OSAD portfolio submission lock: {message}', ['message' => $error->getMessage()]);
+            return true;
+        }
+    }
+
     /**
      * Determines whether an actor can view a single student portfolio record.
      */
@@ -66,7 +87,9 @@ class StudentPortfolioPolicy
      */
     public function canCreate(array $actor): bool
     {
-        return ($actor['profile']['account_type'] ?? '') === 'student' &&
+        $studentId = (string) ($actor['profile']['id'] ?? '');
+        return $studentId !== '' && ! $this->hasFinalPortalSubmission($studentId) &&
+               ($actor['profile']['account_type'] ?? '') === 'student' &&
                in_array('student', $actor['roles'] ?? [], true) &&
                ($actor['profile']['status'] ?? '') === 'active';
     }
@@ -83,7 +106,18 @@ class StudentPortfolioPolicy
         // Only student owner can edit, and only in canonical editable states.
         return $actorId !== '' &&
                $actorId === $studentProfileId &&
+               ! $this->hasFinalPortalSubmission($studentProfileId) &&
                in_array($status, ['draft', 'revision_requested'], true);
+    }
+
+    /** Verified records may only be edited through a separate reviewable revision. */
+    public function canCreateRevision(array $actor, array $record): bool
+    {
+        $actorId = (string) ($actor['profile']['id'] ?? '');
+        $studentProfileId = (string) ($record['student_profile_id'] ?? '');
+        return $actorId !== '' && $actorId === $studentProfileId
+            && ! $this->hasFinalPortalSubmission($studentProfileId)
+            && ($record['status'] ?? '') === 'verified';
     }
 
     /**
@@ -106,6 +140,7 @@ class StudentPortfolioPolicy
         // Only student owner can delete, and only in draft status
         return $actorId !== '' &&
                $actorId === $studentProfileId &&
+               ! $this->hasFinalPortalSubmission($studentProfileId) &&
                $status === 'draft';
     }
 

@@ -57,6 +57,12 @@ class HREvaluationController extends Controller
     {
         $periodId = (string) ($evaluation['evaluation_period_id'] ?? '');
         if ($periodId === '') return null;
+        try {
+            \App\Services\RankingCycleOperationalAvailability::assertEnabled(db_connect(), $periodId);
+        } catch (\RuntimeException $error) {
+            if (str_starts_with($error->getMessage(), 'RANKING_PERIOD_DISABLED:')) return $this->respond(['error' => ['code' => 'RANKING_PERIOD_DISABLED', 'message' => 'This ranking period is temporarily disabled by HR.']], 409);
+            throw $error;
+        }
         $status = db_connect()->table('personnel_evaluation_periods')->select('status')->where('id', $periodId)->get()->getRowArray()['status'] ?? null;
         if ($status === 'ARCHIVED') return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_ARCHIVED', 'message' => 'This ranking period is archived and read-only.']], 409);
         if ($status === 'CANCELLED') return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_CANCELLED', 'message' => 'This ranking period was cancelled and no longer accepts changes.']], 409);

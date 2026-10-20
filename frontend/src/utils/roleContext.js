@@ -275,7 +275,7 @@ export function getWorkspaceLandingRoute(workspace = '') {
   switch (normalizeRoleContext(workspace)) {
     case CANONICAL_ROLES.DEAN: return DEAN_ROUTES.FACULTY_EVALUATION
     case CANONICAL_ROLES.PERSONNEL: return '/personnel/dashboard?tab=overview'
-    case CANONICAL_ROLES.PROGRAM_COORDINATOR: return '/personnel/dashboard?tab=overview'
+    case CANONICAL_ROLES.PROGRAM_COORDINATOR: return '/personnel/dashboard?tab=workspace'
     case CANONICAL_ROLES.ORGANIZATION_MODERATOR: return '/personnel/dashboard?tab=overview'
     default: return '/personnel/dashboard?tab=overview'
   }

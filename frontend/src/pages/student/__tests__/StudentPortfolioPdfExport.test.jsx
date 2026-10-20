@@ -20,7 +20,7 @@ describe('C2: student portfolio PDF prints every page, not the screen', () => {
   })
 
   it('uses the same page renderer for the preview and the printed copy', () => {
-    expect(source).toContain('{renderPageBody(activePage)}')
+    expect(source).toContain('{renderPageBody({ ...page, pageNum: idx + 1 })}')
     expect(source).toContain('{renderPageBody(page)}')
   })
 })

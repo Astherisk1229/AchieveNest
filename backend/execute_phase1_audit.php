@@ -67,7 +67,7 @@ while ($row = $tablesRes->fetch_assoc()) {
 
     $domain = 'OTHER';
     $purpose = 'Institutional data management';
-    if (str_starts_with($t, 'award_') || str_starts_with($t, 'student_award_') || $t === 'dean_student_nominations') {
+    if (str_starts_with($t, 'award_') || str_starts_with($t, 'student_award_')) {
         $domain = 'AWARD';
         $purpose = 'Authoritative award evaluation, criteria, scoring, and reviews';
     } elseif (str_starts_with($t, 'portfolio_') || str_starts_with($t, 'student_portfolio_') || $t === 'achievements') {

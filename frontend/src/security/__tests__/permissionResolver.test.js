@@ -79,8 +79,9 @@ describe('permissionResolver', () => {
       const labels = nav.map(n => n.label)
 
       expect(labels).toContain('OSAD Dashboard')
-      expect(labels).toContain('College and Programs')
-      expect(labels).toContain('Student Accounts')
+      expect(labels).toContain('Student Management')
+      expect(labels).not.toContain('College and Programs')
+      expect(labels).not.toContain('Student Accounts')
       expect(labels).not.toContain('HR Dashboard')
       expect(labels).not.toContain('Edit Portfolio')
     })
@@ -101,7 +102,7 @@ describe('permissionResolver', () => {
       expect(labels).not.toContain('Personnel Directory')
     })
 
-    it('returns strictly 3 operational items for program_coordinator context without personal portfolio links', () => {
+    it('returns coordinator review destinations without personal portfolio links', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
@@ -111,12 +112,12 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual(['Dashboard Overview', 'Verification Workspace', 'Students'])
+      expect(labels).toEqual(['Verification Workspace', 'Students'])
       expect(labels).not.toContain('Edit Portfolio')
       expect(labels).not.toContain('Portfolio')
     })
 
-    it('returns strictly 5 operational items for organization_moderator context including Attendance Certificates', () => {
+    it('returns Events and Organization Profile destinations for organization_moderator context', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
@@ -126,13 +127,7 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual([
-        'Dashboard Overview',
-        'Events & Activities',
-        'Attendance Management',
-        'Attendance Certificates',
-        'Organization Profile'
-      ])
+      expect(labels).toEqual(['Events', 'Organization Profile'])
       expect(labels).not.toContain('Edit Portfolio')
     })
 
@@ -163,7 +158,7 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual(['Dashboard', 'Achievements', 'Portfolio', 'Account'])
+      expect(labels).toEqual(['Profile', 'Portfolio', 'Portfolio Submission', 'Account'])
     })
 
     it('returns empty navigation array for unknown or unassigned roles (SAFE FALLBACK)', () => {

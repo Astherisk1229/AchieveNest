@@ -4,8 +4,8 @@ import apiClient from './apiClient'
  * Canonical frontend adapter for persisted Events.
  *
  * Event authority lives in the backend `events` table.
- * Attendance and Certificate persistence deliberately remain outside
- * this service until their dedicated roadmap phases.
+ * Attendance records have their own services. Event certificate display
+ * settings live on the event and are exposed only to authorized viewers.
  */
 const eventService = {
   async list() {
@@ -16,6 +16,11 @@ const eventService = {
   async listVenues() {
     const response = await apiClient.get('/event-venues')
     return response?.data?.venues ?? []
+  },
+
+  async getCertificatePreview(eventId) {
+    const response = await apiClient.get(`/events/${encodeURIComponent(eventId)}/certificate-preview`)
+    return response?.data?.event_certificate ?? null
   },
 
   async listEventVenues() {

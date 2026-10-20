@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrentUser } from '../../services/authService'
+import { alertDialog, confirmDialog } from '../../components/ui/DialogProvider'
 import AchievementSubmissionModal from './modals/PortfolioAchievementSubmissionModal'
 import StudentAchievementPopoverMenu from './StudentAchievementPopoverMenu'
 import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewModal'
+import { AutomaticAttendanceCertificatePreview, automaticAttendanceCertificateMetadata } from './modals/StudentAchievementPreviewModal'
 import useStudentAchievements from '../../hooks/useStudentAchievements'
 import portfolioService from '../../services/portfolioService'
 import StudentCertificateBadge from '../../components/common/StudentCertificateBadge'
 import EvidenceThumbnail from '../../components/common/EvidenceThumbnail'
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
-import { Badge } from '../../components/ui/badge'
+import StudentAttendanceQrModal from './modals/StudentAttendanceQrModal'
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
+import { Card } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Select, SelectItem } from '../../components/ui/select'
@@ -32,13 +35,14 @@ import {
   CheckCircle2, 
   Clock, 
   RotateCcw,
-  FileCheck,
   ChevronLeft,
   ChevronRight,
-  Info
+  Info,
+  QrCode,
+  Check
 } from 'lucide-react'
 
-export default function StudentAchievementsPage({ currentUser }) {
+export default function StudentProfileModulePage({ currentUser }) {
   const outletCtx = useOutletContext()
   const { user: authUser } = useAuth()
   const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
@@ -72,6 +76,15 @@ export default function StudentAchievementsPage({ currentUser }) {
   // Modal State Controls
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
+  const [qrOpen, setQrOpen] = useState(false)
+
+  const student = {
+    full_name: user.full_name || '',
+    student_id: user.student_id || user.institutional_id || '',
+    program: user.program || user.program_name || '',
+    college: user.college || user.college_name || '',
+    avatar_url: user.avatar_url || null
+  }
 
   useEffect(() => {
     if (location.state?.openSubmissionModal) {
@@ -123,6 +136,50 @@ export default function StudentAchievementsPage({ currentUser }) {
     URL.revokeObjectURL(url)
   }
 
+  const handleEditAchievement = async (item) => {
+    if (item?.canonical_status === 'verified' || item?.status === 'Verified') {
+      try {
+        const revision = await portfolioService.createRevision(item.id)
+        setEditingItem({ ...item, id: revision.id, revision_of_record_id: item.id })
+        setIsSubmitOpen(true)
+        await refreshData()
+      } catch (error) {
+        await alertDialog({
+          title: 'Could not start an edit',
+          message: error?.error?.message || error?.response?.data?.error?.message || error?.message || 'The verified achievement could not be copied for review.',
+          tone: 'destructive'
+        })
+      }
+      return
+    }
+    setEditingItem(item)
+    setIsSubmitOpen(true)
+  }
+
+  const handleDeleteDraft = async (recordId) => {
+    const item = achievements.find(achievement => achievement.id === recordId)
+    if (!item || item.status !== 'Draft') return
+
+    const confirmed = await confirmDialog({
+      title: 'Delete this draft?',
+      message: `“${item.display_title || item.title || 'Untitled draft'}” and its attached evidence will be permanently removed.`,
+      confirmLabel: 'Delete draft',
+      cancelLabel: 'Keep draft',
+      tone: 'destructive'
+    })
+    if (!confirmed) return
+
+    try {
+      await portfolioService.deleteDraft(recordId)
+      if (previewItem?.id === recordId) setPreviewItem(null)
+      handleClosePopover()
+      await refreshData()
+    } catch (error) {
+      const message = error?.response?.data?.error?.message || error?.message || 'The draft could not be deleted. Please try again.'
+      await alertDialog({ title: 'Draft not deleted', message, tone: 'destructive' })
+    }
+  }
+
   // Export CSV Handler
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Category', 'Date', 'Status', 'Location', 'Description', 'Favorited', 'In Portfolio']
@@ -154,63 +211,62 @@ export default function StudentAchievementsPage({ currentUser }) {
     <>
       <div className="space-y-6 pb-12 font-sans">
         
-        {/* ================= 1. PAGE HEADER ================= */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Profile identity, key counts, and primary action share one module header. */}
+        <section className="rounded-2xl border border-[#A9C6B1] bg-[#DCEBDD] p-5 shadow-xs dark:border-[#466B54] dark:bg-[#21372A] sm:p-6" aria-labelledby="student-profile-heading">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <Avatar size="lg" className="border-2 border-[#176B43]/40 shadow-md">
+                <AvatarImage src={student.avatar_url} alt={student.full_name} />
+                <AvatarFallback className="bg-[#176B43] text-white">
+                  {student.full_name ? student.full_name.split(' ').map(part => part[0]).join('') : '?'}
+                </AvatarFallback>
+                <AvatarBadge className="student-profile-verification-badge" title="Verified Student Profile"><Check /></AvatarBadge>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#426750] dark:text-[#BCD0C1]">Profile</p>
+                  <span className="rounded-md border border-[#176B43]/30 bg-[#176B43]/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#176B43] dark:text-emerald-200">Student Portal</span>
+                </div>
+                <h1 id="student-profile-heading" className="mt-0.5 truncate text-2xl font-extrabold leading-tight tracking-tight text-[#123D2A] dark:text-[#EFF6F1] sm:text-[28px]">{student.full_name || 'Student'}</h1>
+                {student.student_id && <p className="mt-1 truncate text-sm font-semibold text-[#315D43] dark:text-emerald-100">Student ID: {student.student_id}</p>}
+                <p className="truncate text-xs font-medium text-[#426750] dark:text-[#BCD0C1]">Your achievement repository</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <Button type="button" variant="outline" onClick={() => setQrOpen(true)} disabled={!student.student_id} className="gap-2 border-[#9DBBA5] bg-white text-[#174E31] hover:bg-[#F1F7F2]">
+                <QrCode className="h-4 w-4" /> My QR Code
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV} className="gap-2 border-[#9DBBA5] bg-white text-[#174E31] hover:bg-[#F1F7F2]">
+                <Download className="h-4 w-4" /> Export CSV
+              </Button>
+              <Button onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }} className="gap-2 bg-[#176B43] font-bold text-white hover:bg-[#125536]">
+                <Plus className="h-4 w-4" /> Add Achievement
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { label: 'Total achievements', value: stats.total, icon: Trophy, valueClass: 'text-[#123D2A] dark:text-[#E6EFE9]' },
+              { label: 'Verified', value: stats.verified, icon: CheckCircle2, valueClass: 'text-[#16834A] dark:text-emerald-400' },
+              { label: 'Pending review', value: stats.pending, icon: Clock, valueClass: 'text-[#9A6500] dark:text-amber-400' }
+            ].map(({ label, value, icon: Icon, valueClass }) => (
+              <div key={label} className="flex items-center gap-3 rounded-xl border border-[#B7CEBC] bg-white/85 p-3.5 shadow-xs dark:border-[#466B54] dark:bg-[#1D2A23]">
+                <Icon className="h-5 w-5 shrink-0 text-[#16834A] dark:text-emerald-400" aria-hidden="true" />
+                <div><p className={`text-2xl font-extrabold leading-none ${valueClass}`}>{value}</p><p className="mt-1 text-[11px] font-bold text-[#426750] dark:text-[#B1C0B6]">{label}</p></div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs font-medium text-[#315D43] dark:text-[#BCD0C1]">Your achievements, submission statuses, and supporting proof in one place.</p>
+        </section>
+
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-extrabold text-[#102A43] dark:text-[#E6EFE9] tracking-tight">Achievements</h1>
-            <p className="text-xs text-[#4F6475] dark:text-[#B1C0B6] font-medium mt-1">
-              View, manage, and track your co-curricular and academic achievements. Attach supporting documents for verification by your program coordinator.
-            </p>
+            <h2 className="text-lg font-extrabold tracking-tight text-[#102A43] dark:text-[#E6EFE9]">Achievements Repository</h2>
+            <p className="mt-0.5 text-xs font-medium text-[#4F6475] dark:text-[#B1C0B6]">Browse every saved achievement and check its review status.</p>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 shrink-0">
-            <Button
-              variant="outline"
-              onClick={handleExportCSV}
-              className="gap-2 cursor-pointer shadow-xs bg-white dark:bg-[#1D2A23] border border-[#C9D8CE] dark:border-[#374B3F] text-[#174E31] dark:text-[#E6EFE9] hover:bg-[#F1F7F2] dark:hover:bg-slate-800 hover:border-[#16834A] focus:ring-2 focus:ring-[#16834A]/20 font-bold text-xs rounded-xl transition-all"
-            >
-              <Download className="w-4 h-4 text-[#174E31] dark:text-[#E6EFE9]" />
-              <span>Export CSV</span>
-            </Button>
-
-            <Button
-              onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
-              className="bg-[#176B43] hover:bg-[#125536] text-white border border-[#176B43] gap-2 cursor-pointer shadow-xs focus:ring-2 focus:ring-[#176B43]/22 font-bold text-xs rounded-xl transition-all disabled:bg-[#E5ECE7] disabled:text-[#7A8B80] disabled:border-[#D2DDD5] disabled:cursor-not-allowed"
-            >
-              <Plus className="w-4 h-4 text-white" />
-              <span>Add Achievement</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* ================= 2. METRICS BANNER ================= */}
-        <div className="bg-[#DCEBDD] dark:bg-[#21372A] rounded-2xl p-6 border border-[#A9C6B1] dark:border-[#466B54] shadow-xs relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1 z-10">
-            <div className="flex items-center gap-2 text-[#176B43] dark:text-[#59AD7C] text-xs font-extrabold tracking-wider uppercase">
-              <Trophy className="w-4 h-4 text-[#16834A] dark:text-[#59AD7C]" />
-              <span>Co-Curricular Student Record</span>
-            </div>
-            <h2 className="text-xl md:text-2xl font-extrabold text-[#123D2A] dark:text-[#EFF6F1] tracking-tight">Student Achievements Overview</h2>
-            <p className="text-xs text-[#3F6B52] dark:text-[#BCD0C1] font-medium max-w-xl">
-              Track verified accomplishments, submit document proofs for coordinator review, and highlight key achievements in your student portfolio.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 z-10 shrink-0">
-            <div className="bg-white dark:bg-[#1D2A23] border border-[#B7CEBC] dark:border-[#374B3F] text-center min-w-[95px] p-3 rounded-xl shadow-xs">
-              <span className="block text-2xl font-extrabold text-[#123D2A] dark:text-[#E6EFE9] tracking-tight">{stats.total}</span>
-              <span className="text-[10px] font-extrabold text-[#426750] dark:text-[#B1C0B6] uppercase tracking-wider">Total</span>
-            </div>
-            <div className="bg-white dark:bg-[#1D2A23] border border-[#B7CEBC] dark:border-[#374B3F] text-center min-w-[95px] p-3 rounded-xl shadow-xs">
-              <span className="block text-2xl font-extrabold text-[#16834A] dark:text-emerald-400 tracking-tight">{stats.verified}</span>
-              <span className="text-[10px] font-extrabold text-[#176B43] dark:text-emerald-300 uppercase tracking-wider">Verified</span>
-            </div>
-            <div className="bg-white dark:bg-[#1D2A23] border border-[#B7CEBC] dark:border-[#374B3F] text-center min-w-[95px] p-3 rounded-xl shadow-xs">
-              <span className="block text-2xl font-extrabold text-[#9A6500] dark:text-amber-400 tracking-tight">{stats.pending}</span>
-              <span className="text-[10px] font-extrabold text-[#725500] dark:text-amber-300 uppercase tracking-wider">Pending</span>
-            </div>
-          </div>
+          <span className="text-xs font-bold text-[#426750] dark:text-[#B1C0B6]">{stats.total} records</span>
         </div>
 
         {/* ================= 3. FILTER BAR & CONTROLS ================= */}
@@ -246,6 +302,9 @@ export default function StudentAchievementsPage({ currentUser }) {
                 <SelectItem value="Verified">Verified</SelectItem>
                 <SelectItem value="Pending Review">Pending Review</SelectItem>
                 <SelectItem value="Returned">Returned</SelectItem>
+                <SelectItem value="Draft">Draft</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+                <SelectItem value="Archived">Archived</SelectItem>
               </Select>
 
               {/* Sort Order */}
@@ -306,7 +365,6 @@ export default function StudentAchievementsPage({ currentUser }) {
               /* GRID VIEW MATCHING DESIGN PARITY */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {filteredAchievements.map((item) => {
-                  const CategoryIcon = getCategoryIcon(item.category)
                   return (
                     <Card
                       key={item.id}
@@ -315,7 +373,9 @@ export default function StudentAchievementsPage({ currentUser }) {
                     >
                       {/* Green Certificate Banner Top Graphic */}
                       <div className="h-32 relative border-b border-[#C6DDCC] dark:border-[#374B3F]">
-                        <EvidenceThumbnail evidence={item.evidence?.[0]} className="h-32" />
+                        {automaticAttendanceCertificateMetadata(item)
+                          ? <AutomaticAttendanceCertificatePreview achievement={item} compact />
+                          : <EvidenceThumbnail evidence={item.evidence?.[0]} className="h-32" />}
                         
                         {/* Hover Action Buttons Top Right (Favorite Star & 3-Dot Menu) */}
                         <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition z-10">
@@ -561,9 +621,10 @@ export default function StudentAchievementsPage({ currentUser }) {
         position={popoverState.position}
         onClose={handleClosePopover}
         onOpenPreview={setPreviewItem}
-        onEdit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
+        onEdit={handleEditAchievement}
         onDownload={handleDownloadProof}
         onResubmit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
+        onDelete={handleDeleteDraft}
       />
 
       {/* Student Achievement Full Preview Modal */}
@@ -571,7 +632,7 @@ export default function StudentAchievementsPage({ currentUser }) {
         achievement={previewItem}
         isOpen={Boolean(previewItem)}
         onClose={() => setPreviewItem(null)}
-        onEdit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
+        onEdit={handleEditAchievement}
         onDownload={handleDownloadProof}
         onResubmit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
       />
@@ -583,6 +644,12 @@ export default function StudentAchievementsPage({ currentUser }) {
         taxonomy={taxonomy}
         onSaved={refreshData}
         onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
+      />
+      <StudentAttendanceQrModal
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        studentId={student.student_id}
+        fullName={student.full_name}
       />
     </>
   )

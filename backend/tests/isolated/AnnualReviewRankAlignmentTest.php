@@ -77,7 +77,10 @@ final class AnnualReviewRankAlignmentTest extends CIUnitTestCase
         $result = $this->service->evaluate('Assistant Instructor', 'Instructor 1', $this->person('Assistant Instructor'));
         self::assertSame('match', $result['present_rank_check']['status']);
         self::assertSame('system', $result['basis']);
-        self::assertSame('aligned', $result['status']);
+        // Assistant Instructor now requires the verified-Master's pathway; the legacy
+        // Instructor I progression is no longer a valid target.
+        self::assertSame('misaligned', $result['status']);
+        self::assertNull($result['recommended_rank']);
     }
 
     public function testSystemPresentRankIsAuthoritativeOverWorkbook(): void
@@ -94,7 +97,10 @@ final class AnnualReviewRankAlignmentTest extends CIUnitTestCase
     {
         $result = $this->service->evaluate('Assistant Instructor', 'Instructor 1', $this->person('ASSISTANT_INSTRUCTOR'));
         self::assertSame('match', $result['present_rank_check']['status']);
-        self::assertSame('aligned', $result['status']);
+        // Stable catalog codes resolve the same authoritative rank, with the same
+        // current qualification rule as its display label.
+        self::assertSame('misaligned', $result['status']);
+        self::assertNull($result['recommended_rank']);
     }
 
     public function testMissingSystemRankFallsBackToWorkbookAndSaysSo(): void

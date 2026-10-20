@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 class CollegeControllerAcademicWriteAuthorizationTest extends TestCase
 {
-    private function controllerForOsad(?CollegeService $collegeService = null): CollegeController
+    private function controllerForOsad(?CollegeService $collegeService = null, ?string $requestBody = null): CollegeController
     {
         $actors = $this->createMock(AuthenticatedActorService::class);
         $actors->method('resolveActor')->willReturn([
@@ -22,8 +22,12 @@ class CollegeControllerAcademicWriteAuthorizationTest extends TestCase
         ]);
 
         $controller = new CollegeController(actorService: $actors, collegeService: $collegeService);
+        $request = new IncomingRequest(config('App'), new URI('http://example.com/api/v1/osad/colleges'), null, new UserAgent());
+        if ($requestBody !== null) {
+            $request->setBody($requestBody);
+        }
         $controller->initController(
-            new IncomingRequest(config('App'), new URI('http://example.com/api/v1/osad/colleges'), null, new UserAgent()),
+            $request,
             new Response(config('App')),
             service('logger')
         );
@@ -56,8 +60,7 @@ class CollegeControllerAcademicWriteAuthorizationTest extends TestCase
             ->with('college-1', 'personnel-1', ['program-1'], null)
             ->willReturn(['updated' => true]);
 
-        $controller = $this->controllerForOsad($collegeService);
-        $controller->request->setBody(json_encode(['program_ids' => ['program-1']], JSON_THROW_ON_ERROR));
+        $controller = $this->controllerForOsad($collegeService, json_encode(['program_ids' => ['program-1']], JSON_THROW_ON_ERROR));
         $response = $controller->updatePersonnelCoordinatorAssignments('college-1', 'personnel-1');
 
         self::assertSame(200, $response->getStatusCode());

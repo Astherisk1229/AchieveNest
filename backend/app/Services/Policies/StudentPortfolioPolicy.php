@@ -19,12 +19,17 @@ class StudentPortfolioPolicy
     private function hasFinalPortalSubmission(string $studentProfileId): bool
     {
         $db = $this->getDb();
-        if (! $db->tableExists('osad_portfolio_submission_access')) return false;
-        return $db->table('osad_portfolio_submission_access')
-            ->where('student_profile_id', $studentProfileId)
-            ->where('access_status', 'active')
-            ->where('submission_state', 'submitted')
-            ->countAllResults() > 0;
+        try {
+            return $db->table('osad_portfolio_submission_access')
+                ->where('student_profile_id', $studentProfileId)
+                ->where('access_status', 'active')
+                ->where('submission_state', 'submitted')
+                ->countAllResults() > 0;
+        } catch (\Throwable $error) {
+            // A missing or unavailable lock table must not silently permit writes.
+            log_message('error', 'Unable to verify OSAD portfolio submission lock: {message}', ['message' => $error->getMessage()]);
+            return true;
+        }
     }
 
     /**

@@ -260,10 +260,13 @@ final class OsadPortfolioSubmissionPortalService
     public function portalDetails(string $portalId): array
     {
         $portal = $this->requirePortal($portalId);
-        $students = $this->database()->table('osad_portfolio_submission_access a')
+        $db = $this->database();
+        $students = $db->table('osad_portfolio_submission_access a')
             ->select('a.id AS access_id, a.student_profile_id, a.access_status, a.submission_state, a.selected_at, a.current_submission_id, a.evaluation_started_at, p.full_name, p.institutional_id')
             ->join('profiles p', 'p.id = a.student_profile_id')->where('a.portal_id', $portalId)
-            ->orderBy('p.last_name', 'ASC')->orderBy('p.first_name', 'ASC')->get()->getResultArray();
+            ->orderBy($db->fieldExists('last_name', 'profiles') ? 'p.last_name' : 'p.full_name', 'ASC')
+            ->orderBy($db->fieldExists('first_name', 'profiles') ? 'p.first_name' : 'p.institutional_id', 'ASC')
+            ->get()->getResultArray();
         foreach ($students as &$student) {
             $student['awards'] = $this->awardsForAccess((string) $student['access_id']);
             $student['evaluation_started_at'] = $this->evaluationStarted($portalId, (string) $student['student_profile_id'], $student['evaluation_started_at'] ?: null);

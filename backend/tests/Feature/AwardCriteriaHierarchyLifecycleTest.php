@@ -57,7 +57,9 @@ final class AwardCriteriaHierarchyLifecycleTest extends CIUnitTestCase
         $hierarchy['categories'][0]['name'] = 'Updated Category';
         $saved = $service->saveCurrent($awardId, $hierarchy);
 
-        $this->assertSame($hierarchy, $saved['hierarchy']);
+        // JSON encoding may normalize an integral decimal (40.0) to an integer (40).
+        // The persisted point values are numeric; their JSON number representation is not a scoring change.
+        $this->assertEquals($hierarchy, $saved['hierarchy']);
         $this->assertSame(1, $db->table('award_scoring_model_versions')->where('award_definition_id', $awardId)->countAllResults(), 'Saving in place must not create a criteria version.');
         $this->assertSame('published', $db->table('award_scoring_model_versions')->where('id', $versionId)->get()->getRowArray()['status']);
         $this->assertSame('Existing Category', $db->table('award_criteria')->where('id', 'criterion-1')->get()->getRowArray()['name'], 'Executable scoring criteria remain unchanged.');

@@ -124,6 +124,20 @@ class FacultyRankProgressionService
      */
     public function getAllowedTransitions(string $currentRankCode, array $context = []): array
     {
+        $personnelGroup = strtolower(str_replace('-', '_', (string) ($context['personnel_group'] ?? 'faculty')));
+        if (in_array($personnelGroup, ['non_teaching_faculty', 'non_teaching'], true)) {
+            return [
+                'current_rank_code' => $currentRankCode,
+                'status' => 'INELIGIBLE',
+                'reason_code' => 'rank_catalog_not_configured',
+                'message' => 'Non-Teaching Faculty follows the shared ranking process; the teaching-faculty rank catalog does not apply.',
+                'normal_next_rank' => null,
+                'allowed_exception_transitions' => [],
+                'all_valid_target_ranks' => [],
+                'is_terminal' => false,
+            ];
+        }
+
         // Check personnel engagement context boundary
         $engagement = $context['faculty_engagement'] ?? 'full_time_faculty';
         if ($engagement === 'part_time_faculty') {

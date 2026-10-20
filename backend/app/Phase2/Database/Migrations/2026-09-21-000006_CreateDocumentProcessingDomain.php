@@ -3,13 +3,14 @@
 namespace Phase2\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
+use RuntimeException;
 
 class CreateDocumentProcessingDomain extends Migration
 {
     public function up()
     {
         $this->db->query(<<<'SQL'
-CREATE TABLE `document_processing_runs` (
+CREATE TABLE IF NOT EXISTS `document_processing_runs` (
     `id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `target_record_version_id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
     `requested_by_profile_id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
@@ -86,7 +87,7 @@ CREATE TABLE `document_processing_runs` (
 SQL);
 
         $this->db->query(<<<'SQL'
-CREATE TABLE `document_processing_run_evidence` (
+CREATE TABLE IF NOT EXISTS `document_processing_run_evidence` (
     `processing_run_id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `evidence_id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
 
@@ -112,7 +113,7 @@ CREATE TABLE `document_processing_run_evidence` (
 SQL);
 
         $this->db->query(<<<'SQL'
-CREATE TABLE `machine_field_proposals` (
+CREATE TABLE IF NOT EXISTS `machine_field_proposals` (
     `id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
 
     `processing_run_id` CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -258,6 +259,37 @@ CREATE TABLE `machine_field_proposals` (
   DEFAULT CHARACTER SET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
 SQL);
+
+        // MySQL commits DDL independently of the migration ledger. A previous
+        // attempt may therefore have created some tables before failing. Make
+        // retries safe and reject any incomplete pre-existing table clearly.
+        $requiredColumns = [
+            'document_processing_runs' => [
+                'id', 'target_record_version_id', 'requested_by_profile_id',
+                'pipeline_stage', 'processing_type', 'status', 'idempotency_key',
+                'requested_at', 'started_at', 'completed_at',
+            ],
+            'document_processing_run_evidence' => [
+                'processing_run_id', 'evidence_id',
+            ],
+            'machine_field_proposals' => [
+                'id', 'processing_run_id', 'target_record_version_id', 'field_key',
+                'value_type', 'source_evidence_id', 'proposal_state', 'review_required',
+                'created_at',
+            ],
+        ];
+
+        foreach ($requiredColumns as $table => $columns) {
+            if (! $this->db->tableExists($table)) {
+                throw new RuntimeException("Required document processing table {$table} does not exist.");
+            }
+
+            foreach ($columns as $column) {
+                if (! $this->db->fieldExists($column, $table)) {
+                    throw new RuntimeException("Document processing table {$table} is missing required column {$column}.");
+                }
+            }
+        }
     }
 
     public function down()
@@ -275,3 +307,4 @@ SQL);
         );
     }
 }
+

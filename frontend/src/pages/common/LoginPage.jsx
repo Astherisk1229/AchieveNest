@@ -303,7 +303,9 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <section className="my-7" aria-label="Demo access">
+            {/* Passwordless demo sign-in is local-only; keep test personas off hosted login pages. */}
+            {import.meta.env.DEV && (
+              <section className="my-7" aria-label="Demo access">
               <div className="mb-3 flex items-center gap-3" aria-hidden="true">
                 <div className="h-px flex-1 bg-slate-200" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Demo access</span>
@@ -340,7 +342,8 @@ export default function LoginPage() {
                   ))}
                 </ul>
               </details>
-            </section>
+              </section>
+            )}
 
             <footer className="mt-7 flex items-start gap-2.5 border-t border-slate-200 pt-5 text-[10px] font-semibold leading-4 text-slate-500">
               <ShieldCheck className="mt-px size-4 shrink-0 text-[#11683f]" aria-hidden="true" />

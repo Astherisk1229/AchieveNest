@@ -19,18 +19,17 @@ class StudentPortfolioPolicy
     private function hasFinalPortalSubmission(string $studentProfileId): bool
     {
         $db = $this->getDb();
+        // The portal feature is optional on installations that have not applied its migration.
+        // Avoid issuing a missing-table query because CI4 marks the surrounding transaction failed.
+        if (! $db->tableExists('osad_portfolio_submission_access')) return false;
+
         try {
             return $db->table('osad_portfolio_submission_access')
                 ->where('student_profile_id', $studentProfileId)
                 ->where('submission_state', 'submitted')
                 ->countAllResults() > 0;
         } catch (\Throwable $error) {
-            // Older installations without OSAD submission tables have no portal lock to apply.
             // Other database errors fail closed so a temporary query failure cannot unlock writes.
-            $message = strtolower($error->getMessage());
-            if (str_contains($message, 'no such table') || str_contains($message, "doesn't exist") || str_contains($message, 'undefined table')) {
-                return false;
-            }
             log_message('error', 'Unable to verify OSAD portfolio submission lock: {message}', ['message' => $error->getMessage()]);
             return true;
         }

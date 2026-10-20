@@ -22,11 +22,15 @@ class StudentPortfolioPolicy
         try {
             return $db->table('osad_portfolio_submission_access')
                 ->where('student_profile_id', $studentProfileId)
-                ->where('access_status', 'active')
                 ->where('submission_state', 'submitted')
                 ->countAllResults() > 0;
         } catch (\Throwable $error) {
-            // A missing or unavailable lock table must not silently permit writes.
+            // Older installations without OSAD submission tables have no portal lock to apply.
+            // Other database errors fail closed so a temporary query failure cannot unlock writes.
+            $message = strtolower($error->getMessage());
+            if (str_contains($message, 'no such table') || str_contains($message, "doesn't exist") || str_contains($message, 'undefined table')) {
+                return false;
+            }
             log_message('error', 'Unable to verify OSAD portfolio submission lock: {message}', ['message' => $error->getMessage()]);
             return true;
         }

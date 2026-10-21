@@ -5,14 +5,14 @@ import {
 } from '../validate-production-deployment-env.js'
 
 describe('production deployment environment validation', () => {
-  it('runs for Vercel production and an explicit release rehearsal', () => {
-    expect(requiresProductionValidation({ VERCEL_ENV: 'production' })).toBe(true)
+  it('runs for Railway production and an explicit release rehearsal', () => {
+    expect(requiresProductionValidation({ RAILWAY_ENVIRONMENT_NAME: 'production' })).toBe(true)
     expect(requiresProductionValidation({ ACHIEVENEST_REQUIRE_PRODUCTION_ENV: 'true' })).toBe(true)
-    expect(requiresProductionValidation({ VERCEL_ENV: 'preview' })).toBe(false)
+    expect(requiresProductionValidation({ RAILWAY_ENVIRONMENT_NAME: 'staging' })).toBe(false)
   })
 
   it('does not block local, CI, or preview builds', () => {
-    expect(validateProductionDeploymentEnvironment({ VERCEL_ENV: 'preview' })).toEqual([])
+    expect(validateProductionDeploymentEnvironment({ RAILWAY_ENVIRONMENT_NAME: 'staging' })).toEqual([])
   })
 
   it.each([
@@ -26,7 +26,7 @@ describe('production deployment environment validation', () => {
     ['https://user:pass@api.example.com/api/v1?debug=1', 'must not contain credentials'],
   ])('rejects an unsafe production API value %#', (apiBaseUrl, expectedMessage) => {
     const errors = validateProductionDeploymentEnvironment({
-      VERCEL_ENV: 'production',
+      RAILWAY_ENVIRONMENT_NAME: 'production',
       VITE_API_BASE_URL: apiBaseUrl,
     })
 
@@ -35,7 +35,7 @@ describe('production deployment environment validation', () => {
 
   it('accepts an exact HTTPS production API base URL', () => {
     expect(validateProductionDeploymentEnvironment({
-      VERCEL_ENV: 'production',
+      RAILWAY_ENVIRONMENT_NAME: 'production',
       VITE_API_BASE_URL: 'https://api.achievenest.example/api/v1',
     })).toEqual([])
   })

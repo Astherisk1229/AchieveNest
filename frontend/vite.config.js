@@ -41,6 +41,13 @@ export default defineConfig(({ mode }) => {
         'achievenest-frontend-production.up.railway.app',
         'profound-vibrancy-staging.up.railway.app',
       ],
+      headers: {
+        'Content-Security-Policy': "frame-ancestors 'none'",
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=()',
+      },
     },
     test: {
       testTimeout: 15000,

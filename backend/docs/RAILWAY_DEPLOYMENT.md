@@ -302,10 +302,10 @@ and maintenance window are recorded.
 
 The frontend production deployment must supply `VITE_API_BASE_URL` as an
 absolute HTTPS URL ending in `/api/v1`. The frontend prebuild guard rejects a
-missing value, a relative URL, localhost, or a staging hostname when Vercel
-reports `VERCEL_ENV=production`. This prevents a production frontend from
-silently using the repository's same-origin development fallback or the
-accepted staging backend.
+missing value, a relative URL, localhost, or a staging hostname when Railway
+reports `RAILWAY_ENVIRONMENT_NAME=production`. This prevents a production
+frontend from silently using the repository's same-origin development fallback
+or the accepted staging backend.
 
 Production promotion is a separately authorized operation. Provisioning the
 database or volumes, setting variables or secrets, running migrations,
@@ -402,3 +402,14 @@ Treat any of these conditions as a blocker for a future production promotion:
 - ClamAV signatures/scanner health have not been verified;
 - production CORS origins are not exact;
 - the health endpoint is not returning 200 through the generated domain.
+
+
+## Current frontend hosting note (2026-10-21)
+
+The AchieveNest frontend is hosted on Railway. Production is served at
+`https://achievenest-frontend-production.up.railway.app`; the staging frontend
+is served at `https://profound-vibrancy-staging.up.railway.app`. The Railway
+production frontend deployed merge commit `ecfcf6fed44b25424200865cc327aa4ad22ff782`
+on 2026-10-21. The repository's Vercel Git integration was disconnected on
+2026-10-21. Earlier Vercel references in the dated acceptance record above are
+retained as historical deployment history.

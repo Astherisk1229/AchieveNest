@@ -37,7 +37,10 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: '0.0.0.0',
-      allowedHosts: ['achievenest-frontend-production.up.railway.app'],
+      allowedHosts: [
+        'achievenest-frontend-production.up.railway.app',
+        'profound-vibrancy-staging.up.railway.app',
+      ],
     },
     test: {
       testTimeout: 15000,

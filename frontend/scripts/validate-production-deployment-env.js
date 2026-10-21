@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 const PRODUCTION_PATH = '/api/v1'
 
 export function requiresProductionValidation(environment = process.env) {
-  return environment.VERCEL_ENV === 'production'
+  return environment.RAILWAY_ENVIRONMENT_NAME?.toLowerCase() === 'production'
     || environment.ACHIEVENEST_REQUIRE_PRODUCTION_ENV === 'true'
 }
 

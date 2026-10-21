@@ -303,44 +303,47 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <section className="my-7" aria-label="Demo access">
-              <div className="mb-3 flex items-center gap-3" aria-hidden="true">
-                <div className="h-px flex-1 bg-slate-200" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Demo access</span>
-                <div className="h-px flex-1 bg-slate-200" />
-              </div>
-
-              <p className="mb-3 text-xs leading-5 text-slate-500">
-                Choose a persona to sign in instantly on this local demo.
-              </p>
-
-              <details ref={demoMenuRef} className="group relative">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] bg-white px-4 py-3 text-sm font-bold text-emerald-950 ring-1 ring-inset ring-emerald-800/30 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147a4c] [&::-webkit-details-marker]:hidden">
-                  <span>Demo Accounts</span>
-                  <ChevronDown className="size-4 shrink-0 text-emerald-800 transition-transform group-open:rotate-180" aria-hidden="true" />
-                </summary>
-                <ul className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 max-h-[min(18rem,42vh)] w-full overflow-y-auto rounded-[14px] bg-white p-1.5 shadow-[0_16px_36px_rgba(11,39,26,0.2)] ring-1 ring-emerald-900/10">
-                  {demoAccounts.map((demo) => (
-                    <li key={demo.email}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectDemo(demo.email)}
-                        disabled={isSubmitting}
-                        className={`min-h-11 w-full rounded-[9px] px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#147a4c] disabled:cursor-not-allowed disabled:opacity-60 ${
-                          email === demo.email
-                            ? 'bg-emerald-50 text-emerald-950'
-                            : 'text-slate-700 hover:bg-slate-50'
-                        }`}
-                        title={`Sign in as ${demo.label}`}
-                      >
-                        <span className="block text-xs font-bold">{demo.label}</span>
-                        <span className="mt-0.5 block truncate text-[10px] text-slate-500">{demo.description}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            </section>
+            {/* Passwordless demo sign-in is local-only; keep test personas off hosted login pages. */}
+            {import.meta.env.DEV && (
+              <section className="my-7" aria-label="Demo access">
+                <div className="mb-3 flex items-center gap-3" aria-hidden="true">
+                  <div className="h-px flex-1 bg-slate-200" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Demo access</span>
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+  
+                <p className="mb-3 text-xs leading-5 text-slate-500">
+                  Choose a persona to sign in instantly on this local demo.
+                </p>
+  
+                <details ref={demoMenuRef} className="group relative">
+                  <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] bg-white px-4 py-3 text-sm font-bold text-emerald-950 ring-1 ring-inset ring-emerald-800/30 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147a4c] [&::-webkit-details-marker]:hidden">
+                    <span>Demo Accounts</span>
+                    <ChevronDown className="size-4 shrink-0 text-emerald-800 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <ul className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 max-h-[min(18rem,42vh)] w-full overflow-y-auto rounded-[14px] bg-white p-1.5 shadow-[0_16px_36px_rgba(11,39,26,0.2)] ring-1 ring-emerald-900/10">
+                    {demoAccounts.map((demo) => (
+                      <li key={demo.email}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectDemo(demo.email)}
+                          disabled={isSubmitting}
+                          className={`min-h-11 w-full rounded-[9px] px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#147a4c] disabled:cursor-not-allowed disabled:opacity-60 ${
+                            email === demo.email
+                              ? 'bg-emerald-50 text-emerald-950'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                          title={`Sign in as ${demo.label}`}
+                        >
+                          <span className="block text-xs font-bold">{demo.label}</span>
+                          <span className="mt-0.5 block truncate text-[10px] text-slate-500">{demo.description}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </section>
+            )}
 
             <footer className="mt-7 flex items-start gap-2.5 border-t border-slate-200 pt-5 text-[10px] font-semibold leading-4 text-slate-500">
               <ShieldCheck className="mt-px size-4 shrink-0 text-[#11683f]" aria-hidden="true" />

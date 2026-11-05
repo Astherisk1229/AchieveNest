@@ -7,7 +7,8 @@ import portfolioSubmissionPortalService from '../../services/portfolioSubmission
 import provisioningService from '../../services/provisioningService'
 import { fetchEvaluatedResults } from '../../services/awardAdminService'
 
-const errorMessage = error => error?.response?.data?.error?.message || error?.message || 'The request could not be completed.'
+const errorMessage = error => error?.error?.message || error?.response?.data?.error?.message || error?.message || 'The request could not be completed.'
+const errorCode = error => error?.error?.code || error?.response?.data?.error?.code
 const button = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50'
 const primary = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 disabled:opacity-50'
 const localDateString = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -30,6 +31,10 @@ export default function OSADPortfolioSubmissionPortalPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [loading, setLoading] = useState(true)
+  const [portalLoadError, setPortalLoadError] = useState('')
+  const [awardsLoadError, setAwardsLoadError] = useState('')
+  const [awardYearLoading, setAwardYearLoading] = useState(true)
+  const [awardYearError, setAwardYearError] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -43,17 +48,29 @@ export default function OSADPortfolioSubmissionPortalPage() {
   const candidateRequests = useRef(new Set())
 
   const loadPortals = useCallback(async () => {
-    setLoading(true); setError('')
-    try {
-      const [items, awardItems, activeYear] = await Promise.all([portfolioSubmissionPortalService.listOsadPortals(), portfolioServiceAwards(), portfolioSubmissionPortalService.getActiveAwardYear()])
-      setPortals(items); setAwards(awardItems)
-      setAwardYear(activeYear.active_award_year || '')
-      if (selectedId) {
-        try { setDetail(await portfolioSubmissionPortalService.getOsadPortal(selectedId)) }
-        catch { setSelectedId(''); setDetail(null) }
-      }
-    } catch (reason) { setError(errorMessage(reason)) }
-    finally { setLoading(false) }
+    setLoading(true); setPortalLoadError(''); setAwardsLoadError(''); setAwardYearLoading(true); setAwardYearError('')
+    const [portalsResult, awardsResult, awardYearResult] = await Promise.allSettled([
+      portfolioSubmissionPortalService.listOsadPortals(),
+      portfolioServiceAwards(),
+      portfolioSubmissionPortalService.getActiveAwardYear(),
+    ])
+    if (portalsResult.status === 'fulfilled') setPortals(portalsResult.value)
+    else setPortalLoadError(errorMessage(portalsResult.reason))
+    if (awardsResult.status === 'fulfilled') setAwards(awardsResult.value)
+    else setAwardsLoadError(errorMessage(awardsResult.reason))
+    if (awardYearResult.status === 'fulfilled') {
+      const activeYear = awardYearResult.value.active_award_year || ''
+      setAwardYear(activeYear)
+      if (!activeYear) setAwardYearError('The system did not return an active award year.')
+    } else {
+      setAwardYear('')
+      setAwardYearError(errorMessage(awardYearResult.reason))
+    }
+    setLoading(false); setAwardYearLoading(false)
+    if (selectedId && portalsResult.status === 'fulfilled') {
+      try { setDetail(await portfolioSubmissionPortalService.getOsadPortal(selectedId)) }
+      catch { setSelectedId(''); setDetail(null) }
+    }
   }, [selectedId])
   useEffect(() => { loadPortals() }, [loadPortals])
 
@@ -196,7 +213,7 @@ export default function OSADPortfolioSubmissionPortalPage() {
       setReopenTarget(null); setReopenReason(''); setAckException(false); setAckRequired(false); setNotice('Submission reopened for correction. The previous final version remains in history.')
       await refreshDetail()
     } catch (reason) {
-      const code = reason?.response?.data?.error?.code
+      const code = errorCode(reason)
       if (code === 'EVALUATION_EXCEPTION_ACK_REQUIRED') setAckRequired(true)
       else setError(errorMessage(reason))
     } finally { setBusy(false) }
@@ -265,8 +282,11 @@ export default function OSADPortfolioSubmissionPortalPage() {
               <input required maxLength={180} className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 px-3 font-normal focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20" value={portalTitle} onChange={event => setPortalTitle(event.target.value)} placeholder="e.g. Student Honors Portfolio" />
             </label>
             <div className="text-sm font-semibold text-slate-800">Award year
-              <div aria-live="polite" className="mt-1.5 flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-normal text-slate-700">{awardYear ? `AY ${awardYear}` : 'Loading award year…'}</div>
-              <p className="mt-1 text-xs font-normal text-slate-600">Set by the system.</p>
+              <div aria-live="polite" className={`mt-1.5 flex min-h-11 items-center justify-between gap-3 rounded-lg border px-3 font-normal ${awardYearError ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                <span>{awardYearLoading ? 'Loading award year…' : awardYear ? `AY ${awardYear}` : 'Award year could not be loaded.'}</span>
+                {awardYearError && !awardYearLoading && <button type="button" className="shrink-0 font-semibold underline" onClick={loadPortals}>Retry</button>}
+              </div>
+              <p className="mt-1 text-xs font-normal text-slate-600">{awardYearError || 'Set by the system.'}</p>
             </div>
             <label className="text-sm font-semibold text-slate-800">Start date
               <input required type="date" min={today} className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 px-3 font-normal focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20" value={startDate} onChange={event => setStartDate(event.target.value)} />
@@ -298,6 +318,7 @@ export default function OSADPortfolioSubmissionPortalPage() {
             </div>
             <button type="button" disabled={busy || !addAwardId} onClick={addSetupAward} className={`${primary} min-h-11 shrink-0`}><Plus className="h-4 w-4" />Add award</button>
           </div>
+          {awardsLoadError && <p role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><span>{awardsLoadError}</span><button type="button" className="font-semibold underline" onClick={loadPortals}>Retry</button></p>}
 
           {setupAwards.length ? <div className="mt-5 divide-y divide-slate-200 rounded-xl border border-slate-200">
             {setupAwards.map(award => {
@@ -341,7 +362,7 @@ export default function OSADPortfolioSubmissionPortalPage() {
           </div>
         </section>
       </form>
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="border-b p-4"><h2 className="font-bold">Submission portals</h2></div>{loading ? <p className="p-5 text-sm text-slate-600">Loading portals…</p> : portals.length ? <div className="divide-y">{portals.map(item => <button type="button" key={item.id} onClick={() => openPortal(item.id)} className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-4 text-left hover:bg-slate-50"><span><strong className="block">{item.title}</strong><span className="text-sm text-slate-600">Award year: {item.award_period || 'not recorded'} · {item.start_date || 'Start date not set'} to {item.end_date || 'End date not set'} · {item.selected_count || 0} selected · {item.submitted_count || 0} submitted · {item.draft_count || 0} in progress</span></span><span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold capitalize">{item.status}</span></button>)}</div> : <p className="p-5 text-sm text-slate-600">No submission portals yet.</p>}</section>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="border-b p-4"><h2 className="font-bold">Submission portals</h2></div>{loading ? <p className="p-5 text-sm text-slate-600">Loading portals…</p> : portalLoadError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 p-5 text-sm text-rose-800"><span>{portalLoadError}</span><button type="button" className={button} onClick={loadPortals}><RefreshCw className="h-4 w-4"/>Retry</button></div> : portals.length ? <div className="divide-y">{portals.map(item => <button type="button" key={item.id} onClick={() => openPortal(item.id)} className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-4 text-left hover:bg-slate-50"><span><strong className="block">{item.title}</strong><span className="text-sm text-slate-600">Award year: {item.award_period || 'not recorded'} · {item.start_date || 'Start date not set'} to {item.end_date || 'End date not set'} · {item.selected_count || 0} selected · {item.submitted_count || 0} submitted · {item.draft_count || 0} in progress</span></span><span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold capitalize">{item.status}</span></button>)}</div> : <p className="p-5 text-sm text-slate-600">No submission portals yet.</p>}</section>
     </>}
   </div>
 }

@@ -6,6 +6,7 @@ use App\Services\AuthorizationService;
 use App\Services\OsadPortfolioSubmissionPortalService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
+use CodeIgniter\Database\Exceptions\DatabaseException;
 use Throwable;
 
 final class PortfolioSubmissionPortalController extends Controller
@@ -42,13 +43,6 @@ final class PortfolioSubmissionPortalController extends Controller
     private function failure(Throwable $error): mixed
     {
         $code = $error->getMessage();
-        $status = match ($code) {
-            'PORTAL_NOT_FOUND', 'AWARD_NOT_FOUND', 'SUBMISSION_NOT_FOUND', 'SUBMISSION_EVIDENCE_NOT_FOUND' => 404,
-            'PORTAL_ACCESS_NOT_AVAILABLE' => 404,
-            'PORTAL_NOT_OPEN', 'PORTAL_NOT_EDITABLE', 'PORTAL_AWARD_ALREADY_ADDED', 'PORTAL_ASSIGNMENTS_REQUIRED', 'AWARD_NOT_IN_PORTAL', 'SUBMISSION_ALREADY_FINAL', 'SUBMISSION_NOT_FINAL', 'SUBMISSION_REQUIRED' => 409,
-            'EVALUATION_EXCEPTION_ACK_REQUIRED' => 409,
-            default => 422,
-        };
         $messages = [
             'PORTAL_NOT_FOUND' => 'Portfolio submission portal not found.',
             'PORTAL_ACCESS_NOT_AVAILABLE' => 'This portfolio submission portal is not available.',
@@ -72,7 +66,25 @@ final class PortfolioSubmissionPortalController extends Controller
             'SUBMITTED_ACCESS_CANNOT_BE_REVOKED' => "A submitted student's access cannot be removed; reopen the submission if a correction is needed.",
             'SUBMISSION_EVIDENCE_UNAVAILABLE' => 'A supporting file could not be loaded.',
         ];
-        return $this->respond(['error' => ['code' => $code, 'message' => $messages[$code] ?? 'The portfolio submission request could not be completed.']], $status);
+        if (! isset($messages[$code])) {
+            log_message('error', 'Portfolio submission portal request failed.', ['exception' => $error]);
+            if ($error instanceof DatabaseException) {
+                return $this->respond(['error' => [
+                    'code' => 'PORTAL_DATA_UNAVAILABLE',
+                    'message' => 'Portfolio submission portals are temporarily unavailable.',
+                ]], 503);
+            }
+            return $this->respond(['error' => [
+                'code' => 'PORTAL_REQUEST_FAILED',
+                'message' => 'The portfolio submission request could not be completed.',
+            ]], 500);
+        }
+        $status = match ($code) {
+            'PORTAL_NOT_FOUND', 'AWARD_NOT_FOUND', 'SUBMISSION_NOT_FOUND', 'SUBMISSION_EVIDENCE_NOT_FOUND', 'PORTAL_ACCESS_NOT_AVAILABLE' => 404,
+            'PORTAL_NOT_OPEN', 'PORTAL_NOT_EDITABLE', 'PORTAL_AWARD_ALREADY_ADDED', 'PORTAL_ASSIGNMENTS_REQUIRED', 'AWARD_NOT_IN_PORTAL', 'SUBMISSION_ALREADY_FINAL', 'SUBMISSION_NOT_FINAL', 'SUBMISSION_REQUIRED', 'EVALUATION_EXCEPTION_ACK_REQUIRED' => 409,
+            default => 422,
+        };
+        return $this->respond(['error' => ['code' => $code, 'message' => $messages[$code]]], $status);
     }
 
     public function studentPortals(): mixed

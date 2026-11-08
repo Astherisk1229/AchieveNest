@@ -1,3 +1,5 @@
+import html2canvas from 'html2canvas-pro'
+
 const A4_WIDTH = 595.28
 const A4_HEIGHT = 841.89
 const CAPTURE_WIDTH = 794
@@ -12,111 +14,86 @@ function blobToDataUrl(blob) {
 }
 
 async function inlineImageSources(root) {
-  const images = [...root.querySelectorAll('img')]
-  for (const image of images) {
-    const source = image.currentSrc || image.getAttribute('src')
-    if (!source) continue
+  const inlineSource = async (element, attribute, source) => {
+    if (!source) return
 
     try {
-      if (source.startsWith('data:')) image.src = source
-      else {
-        const response = await fetch(source)
-        if (!response.ok) throw new Error('Image request failed.')
-        image.src = await blobToDataUrl(await response.blob())
-      }
-      image.removeAttribute('srcset')
-      await image.decode()
+      if (source.startsWith('data:') || source.startsWith('#')) return
+      const response = await fetch(source)
+      if (!response.ok) throw new Error('Image request failed.')
+      element.setAttribute(attribute, await blobToDataUrl(await response.blob()))
     } catch {
+      throw new Error(`An image in the portfolio could not be prepared for PDF export. Refresh the preview and try again.`)
+    }
+  }
+
+  for (const image of root.querySelectorAll('img')) {
+    const source = image.currentSrc || image.getAttribute('src')
+    await inlineSource(image, 'src', source)
+    image.removeAttribute('srcset')
+    image.removeAttribute('crossorigin')
+    try { await image.decode() } catch {
       throw new Error(`The image “${image.alt || 'portfolio image'}” could not be prepared for PDF export. Refresh the preview and try again.`)
     }
   }
-}
 
-async function inlineCssAssets(root) {
-  const cache = new Map()
-  const elements = [root, ...root.querySelectorAll('[style]')]
-  const urlPattern = /url\((['"]?)(.*?)\1\)/g
+  // SVG can reference images and symbols without using an <img> tag. Inline all
+  // external SVG hrefs (including <use> and <feImage>) before rasterization.
+  for (const referencedElement of root.querySelectorAll('svg image, svg use, svg feImage')) {
+    if (!referencedElement.hasAttribute('href') && !referencedElement.hasAttribute('xlink:href')) continue
+    const attribute = referencedElement.hasAttribute('href') ? 'href' : 'xlink:href'
+    const source = referencedElement.getAttribute(attribute)
+    if (!source || source.startsWith('data:') || source.startsWith('#')) continue
+    try {
+      const resolved = new URL(source, document.baseURI)
+      const fragment = resolved.hash
+      resolved.hash = ''
+      const response = await fetch(resolved.href)
+      if (!response.ok) throw new Error('SVG asset request failed.')
+      referencedElement.setAttribute(attribute, `${await blobToDataUrl(await response.blob())}${fragment}`)
+    } catch {
+      throw new Error('An SVG asset in the portfolio could not be prepared for PDF export. Refresh the preview and try again.')
+    }
+  }
 
-  for (const element of elements) {
-    const style = element.getAttribute('style')
-    if (!style || !style.includes('url(')) continue
-    const references = [...style.matchAll(urlPattern)]
-    let nextStyle = style
-
+  // SVG style blocks bypass element.style, so inline their url() assets as well.
+  for (const styleElement of root.querySelectorAll('svg style')) {
+    const styleText = styleElement.textContent || ''
+    const references = [...styleText.matchAll(/url\((['"]?)(.*?)\1\)/g)]
+    let nextStyleText = styleText
     for (const reference of references) {
       const value = reference[2].trim()
       if (!value || value.startsWith('#') || value.startsWith('data:')) continue
       try {
-        const resolved = new URL(value, document.baseURI).href
-        let dataUrl = cache.get(resolved)
-        if (!dataUrl) {
-          const response = await fetch(resolved)
-          if (!response.ok) throw new Error('Asset request failed.')
-          dataUrl = await blobToDataUrl(await response.blob())
-          cache.set(resolved, dataUrl)
-        }
-        nextStyle = nextStyle.replace(reference[0], `url("${dataUrl}")`)
+        const resolved = new URL(value, document.baseURI)
+        const response = await fetch(resolved.href)
+        if (!response.ok) throw new Error('SVG style asset request failed.')
+        const dataUrl = await blobToDataUrl(await response.blob())
+        nextStyleText = nextStyleText.replace(reference[0], `url("${dataUrl}")`)
       } catch {
-        throw new Error('A portfolio design asset could not be prepared for PDF export. Refresh the preview and try again.')
+        throw new Error('An SVG style asset in the portfolio could not be prepared for PDF export. Refresh the preview and try again.')
       }
     }
-
-    if (nextStyle !== style) element.setAttribute('style', nextStyle)
+    styleElement.textContent = nextStyleText
   }
-}
-
-function inlineComputedStyles(source, target) {
-  if (!(source instanceof Element) || !(target instanceof Element)) return
-  const computed = window.getComputedStyle(source)
-  let css = ''
-  for (const property of computed) {
-    const value = computed.getPropertyValue(property)
-    if (value) css += `${property}:${value};`
-  }
-  target.setAttribute('style', `${target.getAttribute('style') || ''};${css}`)
-  const sourceChildren = [...source.children]
-  const targetChildren = [...target.children]
-  sourceChildren.forEach((child, index) => inlineComputedStyles(child, targetChildren[index]))
-}
-
-async function svgForElement(element, width, height) {
-  const clone = element.cloneNode(true)
-  inlineComputedStyles(element, clone)
-  await inlineCssAssets(clone)
-  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-  clone.style.width = `${width}px`
-  clone.style.height = `${height}px`
-  clone.style.minHeight = `${height}px`
-  clone.style.display = 'flex'
-  clone.style.flexDirection = 'column'
-  clone.style.background = '#fff'
-  const html = new XMLSerializer().serializeToString(clone)
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${html}</foreignObject></svg>`
 }
 
 async function renderElement(element, width, height) {
-  const svg = await svgForElement(element, width, height)
-  const image = new Image()
-  image.crossOrigin = 'anonymous'
-  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
-  try {
-    await new Promise((resolve, reject) => {
-      image.onload = resolve
-      image.onerror = () => reject(new Error('Portfolio page could not be rendered for PDF export.'))
-      image.src = url
-    })
-    const canvas = document.createElement('canvas')
-    canvas.width = width * 2
-    canvas.height = height * 2
-    const context = canvas.getContext('2d')
-    context.fillStyle = '#fff'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-    context.scale(2, 2)
-    context.drawImage(image, 0, 0, width, height)
-    return canvas.toDataURL('image/jpeg', 0.94)
-  } finally {
-    URL.revokeObjectURL(url)
-  }
+  const canvas = await html2canvas(element, {
+    allowTaint: false,
+    backgroundColor: '#ffffff',
+    foreignObjectRendering: false,
+    height,
+    logging: false,
+    scale: 2,
+    scrollX: 0,
+    scrollY: 0,
+    useCORS: true,
+    width,
+    windowHeight: height,
+    windowWidth: width
+  })
+  return canvas.toDataURL('image/jpeg', 0.94)
 }
 
 function buildImagePdf(images, title) {
@@ -193,13 +170,13 @@ export const generatePortfolioPdf = async (title = 'Student_Portfolio') => {
       }
     }
 
-    // The SVG snapshot is loaded from a blob URL. Embed every image so the browser
-    // cannot taint the canvas with a nested asset URL during rasterization.
+    // Make every image self-contained before the DOM renderer paints the page.
+    // The renderer is configured to reject any resource that would taint its canvas.
     await inlineImageSources(clone)
 
     // Render one A4 canvas page per designed portfolio page.
     const host = document.createElement('div')
-    host.style.cssText = `position:fixed;left:-100000px;top:0;width:${CAPTURE_WIDTH}px;height:${CAPTURE_HEIGHT}px;overflow:hidden;background:#fff;z-index:-1`
+    host.style.cssText = `position:fixed;left:0;top:0;width:${CAPTURE_WIDTH}px;height:${CAPTURE_HEIGHT}px;overflow:hidden;background:#fff;pointer-events:none;z-index:-2147483648`
     document.body.appendChild(host)
     try {
       host.appendChild(clone)

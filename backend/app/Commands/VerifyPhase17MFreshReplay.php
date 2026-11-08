@@ -38,6 +38,13 @@ class VerifyPhase17MFreshReplay extends BaseCommand
                 'certificate_issuances',
                 'student_achievement_verification_routes',
                 'personnel_annual_review_settings',
+                'osad_portfolio_submission_portals',
+                'osad_portfolio_submission_access',
+                'osad_portfolio_submissions',
+                'osad_portfolio_submission_events',
+                'osad_portfolio_submission_access_awards',
+                'osad_portfolio_submission_submission_awards',
+                'osad_portfolio_submission_portal_awards',
             ];
             $db->resetDataCache();
             foreach ($requiredTables as $table) {
@@ -47,6 +54,11 @@ class VerifyPhase17MFreshReplay extends BaseCommand
             }
             if (! $db->fieldExists('coverage_start', 'ranking_cycles')) {
                 throw new RuntimeException('Fresh replay is missing ranking_cycles.coverage_start.');
+            }
+            foreach (['award_period', 'start_date', 'end_date'] as $field) {
+                if (! $db->fieldExists($field, 'osad_portfolio_submission_portals')) {
+                    throw new RuntimeException("Fresh replay is missing osad_portfolio_submission_portals.{$field}.");
+                }
             }
 
             $tables = $db->query("SELECT table_name,engine,table_collation FROM information_schema.tables WHERE table_schema=? AND table_name<>'migrations' ORDER BY table_name", [$name])->getResultArray();

@@ -27,8 +27,9 @@ export default function StudentPortfolioSubmissionPortalPage() {
       if (portalId) {
         const detail = await portfolioSubmissionPortalService.getStudentPortal(portalId)
         setPortal(detail)
-        setSelectedAwardIds((detail.submission?.awards || []).map(award => award.id))
-        if (detail.can_edit) setRecords(await portfolioService.fetchRecords())
+        const assignedAwardIds = new Set((detail.awards || []).map(award => award.id))
+        setSelectedAwardIds((detail.submission?.awards || []).map(award => award.id).filter(id => assignedAwardIds.has(id)))
+        if (detail.can_edit) setRecords(await portfolioService.fetchRecords({ status: 'verified' }))
         else setRecords([])
       } else setPortal(null)
     } catch (reason) {
@@ -52,7 +53,13 @@ export default function StudentPortfolioSubmissionPortalPage() {
   }
 
   const rawUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} } })()
-  const student = { name: rawUser.full_name || rawUser.name || portal?.student?.name || 'Student', student_id: rawUser.institutional_id || rawUser.student_id || portal?.student?.student_id || '' }
+  const student = {
+    name: rawUser.full_name || rawUser.name || portal?.student?.name || 'Student',
+    student_id: rawUser.institutional_id || rawUser.student_id || portal?.student?.student_id || '',
+    program: rawUser.academic_placement?.academic_program_name || rawUser.program || portal?.student?.program || '',
+    year_level: rawUser.academic_placement?.year_level || rawUser.year_level || portal?.student?.year_level || '',
+    college: rawUser.academic_placement?.college_name || rawUser.college_name || portal?.student?.college || ''
+  }
   const preview = records.map(record => ({
     ...record,
     record_id: record.id,
@@ -64,7 +71,10 @@ export default function StudentPortfolioSubmissionPortalPage() {
     details: typeof record.structured_metadata === 'string' ? (() => { try { return JSON.parse(record.structured_metadata) } catch { return {} } })() : record.structured_metadata,
     evidence: record.evidence || []
   }))
-  const snapshot = portal?.submission ? { ...portal.submission, submitted_at: portal.submission.submitted_at } : { name: 'Portfolio Submission', student, awards: (portal?.awards || []).filter(award => selectedAwardIds.includes(award.id)) }
+  const editableSnapshot = { name: 'Portfolio Submission', student, awards: (portal?.awards || []).filter(award => selectedAwardIds.includes(award.id)) }
+  const snapshot = portal?.can_edit || !portal?.submission
+    ? editableSnapshot
+    : { ...portal.submission, submitted_at: portal.submission.submitted_at }
   const previewDownload = file => portfolioService.downloadEvidence(file.id)
   const finalDownload = file => portfolioSubmissionPortalService.downloadStudentFile(portalId, portal.submission.submission_id || portal.submission.id, file.id)
 
@@ -82,12 +92,12 @@ export default function StudentPortfolioSubmissionPortalPage() {
     {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</p>}
     {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
     {portal?.can_edit && <section className="print-hide flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-      <div><p className="font-bold text-emerald-950">{portal.portal.status === 'reopened' ? 'Correction requested' : 'Your portfolio is open for submission'}</p><p className="mt-1 text-sm text-emerald-900">Add or update accomplishments and attach their supporting files, then return here to review the complete portfolio.</p></div>
+      <div><p className="font-bold text-emerald-950">{portal.portal.status === 'reopened' ? 'Correction requested' : 'Your portfolio is open for submission'}</p><p className="mt-1 text-sm text-emerald-900">Add or update accomplishments and attach their supporting files, then return here to review all verified achievements in your portfolio.</p></div>
       <Link to="/student/achievements" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900"><Plus className="h-4 w-4"/>Manage accomplishments</Link>
     </section>}
     {portal?.can_edit ? <>
       <section className="print-hide rounded-2xl border border-slate-200 bg-white p-5"><h2 className="font-bold">Select the awards for this portfolio submission.</h2><p className="mt-1 text-sm text-slate-600">Choose one or more awards assigned to you by OSAD. Your portfolio will be submitted once and shared with each award you select.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{(portal.awards || []).map(award => <label key={award.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50"><input type="checkbox" checked={selectedAwardIds.includes(award.id)} onChange={() => setSelectedAwardIds(current => current.includes(award.id) ? current.filter(id => id !== award.id) : [...current, award.id])}/><span className="font-medium">{award.name}</span></label>)}</div>{(portal.awards || []).length === 0 && <p className="mt-3 text-sm text-rose-800">OSAD has not assigned any awards to this portal access yet. Contact OSAD before submitting.</p>}</section>
-      <section className="print-hide rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>Review before submitting.</strong> Check every accomplishment and supporting file below. Final submission locks your portfolio. You will be able to view it afterward; changes require OSAD to reopen it for correction.</section>
+      <section className="print-hide rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>Review before submitting.</strong> Every verified achievement and its supporting files are included below. Final submission locks your portfolio. You will be able to view it afterward; changes require OSAD to reopen it for correction.</section>
       <PortfolioSubmissionDocument snapshot={snapshot} previewRecords={preview} downloadFile={previewDownload} onPrint={() => window.print()} />
       {!confirming ? <button type="button" disabled={records.length === 0 || selectedAwardIds.length === 0} onClick={() => setConfirming(true)} className="print-hide inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-5 font-bold text-white disabled:opacity-50"><ClipboardCheck className="h-4 w-4"/>Submit final portfolio</button>
         : <section className="print-hide rounded-2xl border border-slate-300 bg-white p-5"><h2 className="font-bold">Submit and lock this portfolio?</h2><p className="mt-1 text-sm text-slate-600">This saves a final version with copies of the supporting files. You cannot edit it unless OSAD reopens it.</p><div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setConfirming(false)} className="min-h-10 rounded-lg border px-4 font-semibold">Continue reviewing</button><button type="button" disabled={saving} onClick={submit} className="min-h-10 rounded-lg bg-emerald-800 px-4 font-semibold text-white">{saving ? 'Submitting…' : 'Confirm submission'}</button></div></section>}

@@ -47,7 +47,7 @@ final class OsadPortfolioSubmissionPortalTest extends CIUnitTestCase
 
     protected function tearDown(): void
     {
-        foreach (['osad_portfolio_submission_events', 'osad_portfolio_submission_submission_awards', 'osad_portfolio_submission_portal_awards', 'osad_portfolio_submission_access_awards', 'osad_portfolio_submissions', 'osad_portfolio_submission_access', 'osad_portfolio_submission_portals', 'student_portfolio_evidence', 'student_portfolio_records', 'portfolio_subcategories', 'portfolio_categories', 'award_definitions'] as $table) {
+        foreach (['osad_portfolio_submission_events', 'osad_portfolio_submission_submission_awards', 'osad_portfolio_submission_portal_awards', 'osad_portfolio_submission_access_awards', 'osad_portfolio_submissions', 'osad_portfolio_submission_access', 'osad_portfolio_submission_portals', 'student_portfolio_evidence', 'student_portfolio_records', 'portfolio_subcategories', 'portfolio_categories', 'student_program_enrollments', 'academic_programs', 'colleges', 'award_definitions'] as $table) {
             $this->db->query('DROP TABLE IF EXISTS db_' . $table);
         }
         $this->db->table('profiles')->whereIn('id', [
@@ -289,6 +289,9 @@ final class OsadPortfolioSubmissionPortalTest extends CIUnitTestCase
     {
         $ddl = [
             'CREATE TABLE db_profiles (id TEXT PRIMARY KEY, full_name TEXT, institutional_id TEXT, account_type TEXT, status TEXT, last_name TEXT, first_name TEXT)',
+            'CREATE TABLE db_colleges (id TEXT PRIMARY KEY, name TEXT)',
+            'CREATE TABLE db_academic_programs (id TEXT PRIMARY KEY, name TEXT, college_id TEXT)',
+            'CREATE TABLE db_student_program_enrollments (id TEXT PRIMARY KEY, student_profile_id TEXT, academic_program_id TEXT, is_active INTEGER, year_level TEXT)',
             'CREATE TABLE db_award_definitions (id TEXT PRIMARY KEY, name TEXT)',
             'CREATE TABLE db_osad_portfolio_submission_portals (id TEXT PRIMARY KEY, award_definition_id TEXT, title TEXT, award_period TEXT, start_date TEXT, end_date TEXT, status TEXT, created_by TEXT, updated_by TEXT, created_at TEXT, updated_at TEXT, closed_at TEXT)',
             'CREATE TABLE db_osad_portfolio_submission_portal_awards (id TEXT PRIMARY KEY, portal_id TEXT, award_definition_id TEXT, assigned_by TEXT, assigned_at TEXT)',

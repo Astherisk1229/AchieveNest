@@ -458,7 +458,8 @@ final class OsadPortfolioSubmissionPortalService
         $records = $this->database()->table('student_portfolio_records spr')
             ->select('spr.id, spr.title, spr.organizer_or_body, spr.occurrence_date, spr.start_date, spr.end_date, spr.description, spr.structured_metadata, spr.status, spr.submitted_at, spr.verified_at, spr.created_at, pc.name AS category_name, ps.name AS subcategory_name')
             ->join('portfolio_categories pc', 'pc.id = spr.category_id', 'left')->join('portfolio_subcategories ps', 'ps.id = spr.subcategory_id', 'left')
-            ->where('spr.student_profile_id', $studentId)->orderBy('spr.start_date', 'DESC')->orderBy('spr.created_at', 'DESC')->get()->getResultArray();
+            ->where('spr.student_profile_id', $studentId)->where('spr.status', 'verified')
+            ->orderBy('spr.start_date', 'DESC')->orderBy('spr.created_at', 'DESC')->get()->getResultArray();
         if ($records === []) throw new RuntimeException('PORTFOLIO_EMPTY');
 
         $submissionId = $this->uuid();
@@ -484,8 +485,21 @@ final class OsadPortfolioSubmissionPortalService
                     'evidence' => $files,
                 ];
             }
-            $student = $this->database()->table('profiles')->select('id, full_name, institutional_id')->where('id', $studentId)->get()->getRowArray();
-            $snapshot = ['name' => 'Portfolio Submission', 'version' => $version, 'submitted_at' => date('Y-m-d H:i:s'), 'student' => ['name' => $student['full_name'] ?? '', 'student_id' => $student['institutional_id'] ?? ''], 'awards' => $awardRows, 'records' => $portfolio];
+            $student = $this->database()->table('profiles p')
+                ->select('p.id, p.full_name, p.institutional_id, spe.year_level, ap.name AS program_name, c.name AS college_name')
+                ->join('student_program_enrollments spe', 'spe.student_profile_id = p.id AND spe.is_active = 1', 'left')
+                ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
+                ->join('colleges c', 'c.id = ap.college_id', 'left')
+                ->where('p.id', $studentId)->get()->getRowArray();
+            $snapshot = [
+                'name' => 'Portfolio Submission', 'version' => $version, 'submitted_at' => date('Y-m-d H:i:s'),
+                'student' => [
+                    'name' => $student['full_name'] ?? '', 'student_id' => $student['institutional_id'] ?? '',
+                    'program' => $student['program_name'] ?? '', 'year_level' => $student['year_level'] ?? '',
+                    'college' => $student['college_name'] ?? '',
+                ],
+                'awards' => $awardRows, 'records' => $portfolio,
+            ];
             $this->database()->transStart();
             $this->database()->table('osad_portfolio_submissions')->where('portal_id', $portalId)->where('student_profile_id', $studentId)->where('status', 'current')->update(['status' => 'superseded']);
             $this->database()->table('osad_portfolio_submissions')->insert([

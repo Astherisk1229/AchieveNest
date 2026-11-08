@@ -77,12 +77,15 @@ export default function StudentProfileModulePage({ currentUser }) {
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [qrOpen, setQrOpen] = useState(false)
+  const [isExportSelectionOpen, setIsExportSelectionOpen] = useState(false)
+  const [exportSelection, setExportSelection] = useState(() => new Set())
 
   const student = {
     full_name: user.full_name || '',
     student_id: user.student_id || user.institutional_id || '',
     program: user.program || user.program_name || '',
     college: user.college || user.college_name || '',
+    year_level: user.year_level || '',
     avatar_url: user.avatar_url || null
   }
 
@@ -180,35 +183,125 @@ export default function StudentProfileModulePage({ currentUser }) {
     }
   }
 
-  // Export CSV Handler
+  const exportCategories = [...new Set(achievements.map(item => item.category || 'Uncategorized'))].sort((a, b) => a.localeCompare(b))
+  const selectedExportAchievements = achievements.filter(item => exportSelection.has(String(item.id)))
+
+  const setCategoryExportSelection = (category, checked) => {
+    setExportSelection(current => {
+      const next = new Set(current)
+      achievements.filter(item => (item.category || 'Uncategorized') === category).forEach(item => {
+        if (checked) next.add(String(item.id))
+        else next.delete(String(item.id))
+      })
+      return next
+    })
+  }
+
+  const setAchievementExportSelection = (id, checked) => {
+    setExportSelection(current => {
+      const next = new Set(current)
+      if (checked) next.add(String(id))
+      else next.delete(String(id))
+      return next
+    })
+  }
+
+  // Export only explicitly selected records, independent of the page's search and filters.
   const handleExportCSV = () => {
-    const headers = ['ID', 'Title', 'Category', 'Date', 'Status', 'Location', 'Description', 'Favorited', 'In Portfolio']
-    const rows = filteredAchievements.map(a => [
-      `"REF-${String(a.id || '').toUpperCase()}"`,
-      `"${String(a.title || '').replace(/"/g, '""')}"`,
-      `"${String(a.category || '')}"`,
-      `"${String(a.date || '')}"`,
-      `"${String(a.status || '')}"`,
-      `"${String(a.location || '')}"`,
-      `"${String(a.description || '').replace(/"/g, '""')}"`,
-      `"${a.is_favorited ? 'Yes' : 'No'}"`,
-      `"${a.portfolio_id ? 'Yes' : 'No'}"`
-    ])
-    
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-    const encodedUri = encodeURI(csvContent)
+    if (selectedExportAchievements.length === 0) return
+    const headers = [
+      'Student Name', 'Student ID', 'Program', 'Year Level', 'College',
+      'Achievement ID', 'Title', 'Category', 'Date', 'Status', 'Location', 'Description',
+      'Certificate Status', 'Certificate Number', 'Certificate Issued At', 'Certificate Verification URL',
+      'Supporting Certificate / Evidence Files'
+    ]
+    const escapeCsv = value => {
+      const text = String(value ?? '')
+      const safeText = /^[\s]*[=+@\-]/.test(text) ? `'${text}` : text
+      return `"${safeText.replace(/"/g, '""')}"`
+    }
+    const rows = selectedExportAchievements.map(item => {
+      const certificate = item.certificate || {}
+      const evidenceFiles = (Array.isArray(item.evidence) ? item.evidence : [])
+        .map(evidence => evidence.original_filename)
+        .filter(Boolean)
+      if (!evidenceFiles.length && item.attached_file_name) evidenceFiles.push(item.attached_file_name)
+      return [
+        student.full_name, student.student_id, student.program, student.year_level, student.college,
+        `REF-${String(item.id || '').toUpperCase()}`, item.title, item.category, item.date, item.status,
+        item.location, item.description, certificate.status, certificate.certificate_number,
+        certificate.issued_at, certificate.verification_url, evidenceFiles.join('; ')
+      ].map(escapeCsv)
+    })
+
+    const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows.map(row => row.join(','))].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    const objectUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `AchieveNest_Student_Achievements_${user.student_id}.csv`)
+    link.href = objectUrl
+    link.download = `AchieveNest_Student_Achievements_${student.student_id || 'export'}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    setIsExportSelectionOpen(false)
   }
 
   const totalCount = stats.total
 
   return (
     <>
+      {isExportSelectionOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setIsExportSelectionOpen(false) }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="export-achievements-title" className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#131e2e]">
+            <div className="border-b border-slate-200 p-5 dark:border-slate-700">
+              <h2 id="export-achievements-title" className="text-lg font-extrabold text-slate-900 dark:text-white">Choose achievements to export</h2>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Select one or more categories or individual achievements. Page search and filters won’t limit this selection.</p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200" aria-live="polite">{exportSelection.size} of {achievements.length} selected</span>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setExportSelection(new Set(achievements.map(item => String(item.id))))}>Select all</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setExportSelection(new Set())}>Clear</Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+              {exportCategories.length === 0 ? <p className="text-sm text-slate-500">There are no achievements to export.</p> : exportCategories.map(category => {
+                const categoryAchievements = achievements.filter(item => (item.category || 'Uncategorized') === category)
+                const selectedInCategory = categoryAchievements.filter(item => exportSelection.has(String(item.id))).length
+                const allSelected = selectedInCategory === categoryAchievements.length
+                return (
+                  <fieldset key={category} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                    <legend className="sr-only">{category}</legend>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 font-bold text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800">
+                      <input type="checkbox" checked={allSelected} onChange={event => setCategoryExportSelection(category, event.target.checked)} className="h-4 w-4 accent-emerald-700" />
+                      <span className="min-w-0 flex-1">{category}</span>
+                      <span className="text-xs font-medium text-slate-500">{selectedInCategory}/{categoryAchievements.length}</span>
+                    </label>
+                    <div className="mt-1 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                      {categoryAchievements.map(item => (
+                        <label key={item.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                          <input type="checkbox" checked={exportSelection.has(String(item.id))} onChange={event => setAchievementExportSelection(item.id, event.target.checked)} className="h-4 w-4 accent-emerald-700" />
+                          <span className="min-w-0 flex-1 truncate">{item.title || 'Untitled achievement'}</span>
+                          <span className="shrink-0 text-xs text-slate-500">{item.status}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                )
+              })}
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 p-4 dark:border-slate-700">
+              <Button type="button" variant="outline" onClick={() => setIsExportSelectionOpen(false)}>Cancel</Button>
+              <Button type="button" onClick={handleExportCSV} disabled={selectedExportAchievements.length === 0} className="gap-2 bg-[#176B43] text-white hover:bg-[#125536]">
+                <Download className="h-4 w-4" /> Export {selectedExportAchievements.length} selected
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
       <div className="space-y-6 pb-12 font-sans">
         
         {/* Profile identity, key counts, and primary action share one module header. */}
@@ -237,7 +330,7 @@ export default function StudentProfileModulePage({ currentUser }) {
               <Button type="button" variant="outline" onClick={() => setQrOpen(true)} disabled={!student.student_id} className="gap-2 border-[#9DBBA5] bg-white text-[#174E31] hover:bg-[#F1F7F2]">
                 <QrCode className="h-4 w-4" /> My QR Code
               </Button>
-              <Button variant="outline" onClick={handleExportCSV} className="gap-2 border-[#9DBBA5] bg-white text-[#174E31] hover:bg-[#F1F7F2]">
+              <Button variant="outline" onClick={() => { setExportSelection(new Set()); setIsExportSelectionOpen(true) }} className="gap-2 border-[#9DBBA5] bg-white text-[#174E31] hover:bg-[#F1F7F2]">
                 <Download className="h-4 w-4" /> Export CSV
               </Button>
               <Button onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }} className="gap-2 bg-[#176B43] font-bold text-white hover:bg-[#125536]">

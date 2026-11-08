@@ -22,11 +22,12 @@ export const loadPdfjs = async () => {
   return pdfjsPromise
 }
 
-async function pdfToImages(blob) {
+async function pdfToImages(blob, pageLimit = MAX_PDF_PAGES) {
   const pdfjs = await loadPdfjs()
   const document = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
   const pages = []
-  const count = Math.min(document.numPages, MAX_PDF_PAGES)
+  const totalPages = document.numPages
+  const count = Math.min(totalPages, pageLimit)
   for (let index = 1; index <= count; index += 1) {
     const page = await document.getPage(index)
     const base = page.getViewport({ scale: 1 })
@@ -34,12 +35,21 @@ async function pdfToImages(blob) {
     const canvas = window.document.createElement('canvas')
     canvas.width = Math.ceil(viewport.width)
     canvas.height = Math.ceil(viewport.height)
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport, canvas }).promise
+    const context = canvas.getContext('2d')
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    await page.render({ canvasContext: context, viewport, canvas, background: '#ffffff' }).promise
     pages.push(canvas.toDataURL('image/jpeg', 0.88))
     page.cleanup()
   }
   await document.destroy()
-  return { pages, truncated: document.numPages > count ? document.numPages - count : 0 }
+  return { pages, truncated: totalPages > count ? totalPages - count : 0 }
+}
+
+/** Render the first PDF page as a white-background image for browser previews. */
+export async function renderPdfFirstPage(blob) {
+  const result = await pdfToImages(blob, 1)
+  return result.pages[0] || null
 }
 
 /**

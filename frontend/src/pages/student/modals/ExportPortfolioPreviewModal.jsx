@@ -5,7 +5,6 @@ import {
   FileText, 
   Printer, 
   Download,
-  QrCode, 
   ShieldCheck, 
   Award,
   FileCheck,
@@ -17,6 +16,7 @@ import { generatePortfolioPdf, printPortfolio } from '../../../services/portfoli
 import portfolioService from '../../../services/portfolioService'
 import { evidenceMime } from '../../../components/common/EvidenceThumbnail'
 import { detailRows } from '../../../utils/achievementDetails'
+import { renderPdfFirstPage } from '../../../components/portfolio-booklet/pdfEvidenceRenderer'
 import ndmuSeal from '../../../assets/brand/ndmu-university-seal.png'
 
 const dateTimestamp = value => {
@@ -78,18 +78,7 @@ function PortfolioEvidencePreview({ evidence, preview }) {
     )
   }
 
-  if (mime === 'application/pdf') {
-    return (
-      <iframe
-        title={`Certificate: ${evidence.original_filename}`}
-        src={`${preview.url}#page=1&view=FitH&toolbar=0`}
-        className="h-full min-h-[220px] w-full rounded-lg border-0 bg-white"
-        tabIndex={-1}
-      />
-    )
-  }
-
-  if (mime === 'image/jpeg' || mime === 'image/png') {
+  if (mime === 'application/pdf' || mime === 'image/jpeg' || mime === 'image/png') {
     return <img src={preview.url} alt={`Certificate: ${evidence.original_filename}`} className="h-full min-h-[220px] w-full rounded-lg bg-white object-contain" />
   }
 
@@ -102,6 +91,8 @@ function PortfolioEvidencePreview({ evidence, preview }) {
 }
 
 export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, achievements }) {
+  const [pdfSaving, setPdfSaving] = useState(false)
+  const [pdfError, setPdfError] = useState('')
   const [schemaCatalog, setSchemaCatalog] = useState(null)
   const [schemaLoading, setSchemaLoading] = useState(false)
   const [schemaError, setSchemaError] = useState('')
@@ -135,8 +126,6 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
   const [includeTableOfContents, setIncludeTableOfContents] = useState(true)
   const [includeCategorySeparators, setIncludeCategorySeparators] = useState(true)
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
-  const [pdfSaving, setPdfSaving] = useState(false)
-  const [pdfError, setPdfError] = useState('')
   const previewScrollRef = useRef(null)
 
   // Every verified record is included, across the student's college years.
@@ -162,8 +151,10 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
       try {
         const blob = await portfolioService.downloadEvidence(file.id)
         if (cancelled) return [file.id, { url: null, failed: true }]
-        const url = URL.createObjectURL(blob)
-        objectUrls.push(url)
+        const isPdf = evidenceMime(file) === 'application/pdf'
+        const url = isPdf ? await renderPdfFirstPage(blob) : URL.createObjectURL(blob)
+        if (!isPdf) objectUrls.push(url)
+        if (!url) throw new Error('The certificate preview could not be rendered.')
         return [file.id, { url, failed: false }]
       } catch {
         return [file.id, { url: null, failed: true }]
@@ -278,16 +269,13 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
     return () => observer.disconnect()
   }, [isOpen, pagesList])
 
-  const handleSavePDF = async () => {
+  const handleSavePDF = () => {
+    if (pdfSaving) return
     setPdfSaving(true)
     setPdfError('')
-    try {
-      await generatePortfolioPdf(`NDMU_Portfolio_${student?.student_id || ''}`)
-    } catch (error) {
-      setPdfError(error?.message || 'The PDF could not be created. Please try again.')
-    } finally {
-      setPdfSaving(false)
-    }
+    generatePortfolioPdf(`NDMU_Portfolio_${student?.student_id || ''}`)
+      .catch(error => setPdfError(error?.message || 'The portfolio PDF could not be created.'))
+      .finally(() => setPdfSaving(false))
   }
 
   // One renderer for the on-screen preview and the printed copy, so both always match.
@@ -452,12 +440,12 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                       </div>
                       <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[9px] font-extrabold text-[#064e2b]">{page.item.category}</span>
                     </div>
-                    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
+                    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-white p-2">
                       {page.item.evidence.length === 0
                         ? <PortfolioEvidencePreview evidence={null} />
                         : <div className={`grid min-h-0 flex-1 gap-2 ${page.item.evidence.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                             {page.item.evidence.map(file => (
-                              <div key={file.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                              <div key={file.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg bg-slate-50">
                                 <PortfolioEvidencePreview
                                   evidence={file}
                                   preview={evidencePreviews.loading ? { loading: true } : evidencePreviews.byId[file.id]}
@@ -465,10 +453,6 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                               </div>
                             ))}
                           </div>}
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-slate-900/80 px-2 py-1 text-[8px] font-bold text-white backdrop-blur-md">
-                        <QrCode className="h-3 w-3 text-amber-400" />
-                        <span>Verified Digital Proof</span>
-                      </div>
                     </div>
                     <div className="flex items-center justify-between border-t pt-1 text-[8.5px] font-semibold text-slate-400">
                       <span>{page.item.evidence.map(file => file.original_filename).filter(Boolean).join(' • ') || 'Supporting evidence'}</span>
@@ -592,20 +576,22 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
               <button
                 type="button"
                 onClick={handleSavePDF}
-                disabled={pdfSaving || activeAchievements.length === 0 || evidencePreviews.loading || schemaLoading || !schemaCatalog}
+                disabled={activeAchievements.length === 0 || evidencePreviews.loading || schemaLoading || !schemaCatalog || pdfSaving}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#16834a] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#126b3c] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {pdfSaving || evidencePreviews.loading || schemaLoading
+                {evidencePreviews.loading || schemaLoading || pdfSaving
                   ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
                   : <Download className="w-4 h-4" />}
                 <span>{schemaLoading ? 'Loading achievement details…' : evidencePreviews.loading ? 'Preparing certificates…' : pdfSaving ? 'Creating PDF…' : 'Save as PDF'}</span>
               </button>
-              <p className="text-center text-[11px] text-slate-500" role={pdfError ? 'alert' : undefined}>
-                {schemaLoading
+              <p className={`text-center text-[11px] ${pdfError ? 'text-red-600' : 'text-slate-500'}`} role={pdfError ? 'alert' : undefined}>
+                {pdfError || (schemaLoading
                   ? 'Loading the submitted fields so they can be included in the portfolio.'
                   : evidencePreviews.loading
                     ? 'Loading the verified evidence for your portfolio.'
-                    : pdfError || 'Downloads the portfolio as a PDF file.'}
+                    : pdfSaving
+                      ? 'Preparing the portfolio PDF for download.'
+                      : 'Downloads the portfolio as a PDF.' )}
               </p>
 
               <button

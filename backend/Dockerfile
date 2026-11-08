@@ -1,5 +1,16 @@
 FROM composer:2 AS composer
 
+FROM python:3.12-slim-bookworm AS ocr
+
+WORKDIR /build
+COPY ocr/requirements.lock ./requirements.lock
+RUN python -m pip install \
+    --disable-pip-version-check \
+    --no-compile \
+    --no-cache-dir \
+    --target /opt/ocr-packages \
+    --requirement requirements.lock
+
 FROM dunglas/frankenphp:1-php8.4-bookworm
 
 ENV APP_ENV=production \
@@ -18,14 +29,17 @@ RUN apt-get update \
         libgomp1 \
         libsm6 \
         libxext6 \
-        python3 \
-        python3-pip \
-        python3-venv \
         unzip \
     && rm -rf /var/lib/apt/lists/* \
     && install-php-extensions gd intl mysqli zip \
-    && python3 -m venv /opt/ocr-venv \
-    && ln -s /opt/ocr-venv/bin/python /usr/local/bin/python
+    && ldconfig
+
+COPY --from=ocr /usr/local/bin/python3.12 /usr/local/bin/python3.12
+COPY --from=ocr /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=ocr /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so.1.0
+COPY --from=ocr /opt/ocr-packages /app/.runtime/python-packages
+RUN ln -s /usr/local/bin/python3.12 /usr/local/bin/python \
+    && ldconfig
 
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
@@ -41,12 +55,6 @@ RUN composer install \
 COPY . /app
 
 RUN mkdir -p "$OCR_PYTHON_PACKAGES_DIR" "$PADDLE_PDX_CACHE_HOME" \
-    && python -m pip install \
-        --disable-pip-version-check \
-        --no-compile \
-        --no-cache-dir \
-        --target "$OCR_PYTHON_PACKAGES_DIR" \
-        --requirement ocr/requirements.lock \
     && python ocr/student_ocr_bridge.py --health
 
 COPY Caddyfile /Caddyfile

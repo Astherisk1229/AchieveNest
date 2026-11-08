@@ -1,0 +1,16 @@
+.git/
+.env
+.env.*
+!.env.example
+.runtime/
+writable/
+vendor/
+tests/
+tools/
+backups/
+builds/
+docs/
+*.log
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/

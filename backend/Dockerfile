@@ -70,6 +70,7 @@ RUN mkdir -p "$OCR_PYTHON_PACKAGES_DIR" "$PADDLE_PDX_CACHE_HOME" \
 
 COPY Caddyfile /Caddyfile
 COPY start-container.sh /start-container.sh
+COPY php.ini /usr/local/etc/php/conf.d/99-achievenest.ini
 RUN chmod 0755 /start-container.sh
 
 CMD ["/start-container.sh"]

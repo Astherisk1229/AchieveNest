@@ -1,4 +1,4 @@
 #!/bin/sh
 set -eu
 
-exec frankenphp run --config /Caddyfile
+exec docker-php-entrypoint --config /Caddyfile --adapter caddyfile

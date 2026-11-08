@@ -34,6 +34,10 @@ RUN apt-get update \
     && install-php-extensions gd intl mysqli zip \
     && ldconfig
 
+# FrankenPHP's image normally rewrites the PHP entrypoint to launch FrankenPHP.
+# Railway's existing start command relies on that behavior.
+RUN sed -i 's/php/frankenphp run/g' /usr/local/bin/docker-php-entrypoint
+
 # Seed ClamAV definitions in the image so the existing startup command does
 # not need to download the full database before the web server can start.
 RUN freshclam --quiet

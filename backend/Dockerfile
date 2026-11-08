@@ -24,6 +24,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         clamav \
+        git \
         libgl1 \
         libglib2.0-0 \
         libgomp1 \
@@ -53,12 +54,14 @@ COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
 COPY composer.json composer.lock ./
 COPY app ./app
-RUN composer install \
+RUN composer config preferred-install.codeigniter4/framework source \
+    && composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
-    --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    && find vendor -type d -name .git -prune -exec rm -rf '{}' + \
+    && apt-get purge -y git
 
 COPY . /app
 

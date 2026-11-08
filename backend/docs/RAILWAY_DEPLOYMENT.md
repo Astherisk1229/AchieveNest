@@ -22,24 +22,21 @@ separate, observable steps.
 - Healthcheck path: `/api/v1/health`.
 - Healthcheck timeout: 300 seconds.
 - Restart policy: `ON_FAILURE`, with a finite retry count during rollout.
-- Because the `/app/writable` volume replaces the repository's directory tree,
-  configure this start command so CodeIgniter's runtime directories and ClamAV
-  signatures exist before Railpack starts FrankenPHP:
+- For the Railpack production service, the `/app/writable` volume replaces the
+  repository's directory tree. Configure this shell start command so
+  CodeIgniter's runtime directories and ClamAV signatures exist before
+  Railpack starts FrankenPHP:
 
   ```sh
   mkdir -p /app/writable/cache /app/writable/logs /app/writable/session /app/writable/uploads/evidence /app/writable/debugbar /app/writable/backups /app/writable/restore_test /app/writable/demo-credentials && freshclam --quiet || true; exec /start-container.sh
   ```
 
-  This command is for Railpack deployments. A Dockerfile deployment interprets
-  a configured start command in exec form, so shell operators must be wrapped
-  in `/bin/sh -c`. For the staging Dockerfile build, `railway.json` applies the
-  environment-specific `/start-container.sh` command instead. That script
+  This command is for Railpack deployments. For the staging Dockerfile build,
+  the Railway service's Start Command is `/start-container.sh`. That script
   creates the writable directories and then starts FrankenPHP; the image
-  already seeds ClamAV signatures during the build.
-
-The staging override uses Railway's legacy `railway.json` format, which is
-scheduled for retirement on 2026-12-01. Replace it with the supported
-infrastructure-as-code format before that date.
+  seeds ClamAV signatures during the build. Railway runs Dockerfile start
+  commands in exec form, so do not put shell operators in this setting unless
+  the command explicitly invokes `/bin/sh -c`.
 
 ## 2. Railway variables
 

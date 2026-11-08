@@ -54,8 +54,8 @@ COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
 COPY composer.json composer.lock ./
 COPY app ./app
-RUN composer config preferred-install.codeigniter4/framework source \
-    && composer install \
+RUN composer install \
+    --prefer-install=source \
     --no-dev \
     --no-interaction \
     --no-progress \

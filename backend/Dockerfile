@@ -34,6 +34,10 @@ RUN apt-get update \
     && install-php-extensions gd intl mysqli zip \
     && ldconfig
 
+# Seed ClamAV definitions in the image so the existing startup command does
+# not need to download the full database before the web server can start.
+RUN freshclam --quiet
+
 COPY --from=ocr /usr/local/bin/python3.12 /usr/local/bin/python3.12
 COPY --from=ocr /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=ocr /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so.1.0

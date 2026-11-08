@@ -273,7 +273,7 @@ class AuthController extends Controller
                     'administrative_status'    => $lifecycle['administrative_status'],
                     'account_lifecycle_status' => $lifecycle['account_lifecycle_status'],
                     'required_next_action'     => $lifecycle['required_next_action'],
-                    'designation'              => $profile['designation'] ?? null,
+                    'designation'              => $profile['designation_title'] ?? ($profile['designation'] ?? null),
                     'year_level'               => $studentPlacement['year_level'] ?? ($profile['year_level'] ?? null),
                     'must_change_password'     => $lifecycle['must_change_password'],
                     'academic_placement'       => $studentPlacement,

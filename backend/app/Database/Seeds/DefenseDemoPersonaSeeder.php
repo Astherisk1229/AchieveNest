@@ -98,7 +98,7 @@ class DefenseDemoPersonaSeeder extends Seeder
             [
                 'id'               => 'd0000000-0000-0000-0001-000000000005',
                 'institutional_id' => '2026-DEMO-005',
-                'name'             => 'Demo HR Administrator',
+                'name'             => 'HR Administrator',
                 'email'            => 'demo.hr.admin@ndmu.edu.ph',
                 'account_type'     => 'hr_admin',
                 'designation'      => 'HR Director',
@@ -109,7 +109,7 @@ class DefenseDemoPersonaSeeder extends Seeder
             [
                 'id'               => 'd0000000-0000-0000-0001-000000000006',
                 'institutional_id' => '2026-DEMO-006',
-                'name'             => 'Demo OSAD Administrator',
+                'name'             => 'OSAD Administrator',
                 'email'            => 'demo.osad.admin@ndmu.edu.ph',
                 'account_type'     => 'osad_admin',
                 'designation'      => 'Director of Student Affairs',

@@ -63,13 +63,13 @@ const PERSONAS = [
   },
   {
     key: 'hr_admin',
-    name: 'Demo HR Administrator',
+    name: 'HR Administrator',
     email: 'demo.hr.admin@ndmu.edu.ph',
     expectedAccountType: 'hr_admin',
   },
   {
     key: 'osad_admin',
-    name: 'Demo OSAD Administrator',
+    name: 'OSAD Administrator',
     email: 'demo.osad.admin@ndmu.edu.ph',
     expectedAccountType: 'osad_admin',
   },

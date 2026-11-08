@@ -37,6 +37,11 @@ export default function AccountPage({ currentUser }) {
     handleSaveOverrides
   } = useUserProfile(activeUser)
   const isPersonnelAccount = user.account_type === 'personnel'
+  const designationFallback = user.account_type === 'osad_admin'
+    ? 'OSAD Administrator'
+    : user.account_type === 'hr_admin'
+      ? 'HR Administrator'
+      : 'Institutional Administrator'
 
   // Edit Mode & Input State for Editable Self-Service Fields
   const [isEditing, setIsEditing] = useState(false)
@@ -157,10 +162,10 @@ export default function AccountPage({ currentUser }) {
             </h2>
             <p className="text-xs font-bold text-[#16834a] dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-1">
               <Building2 className="w-3.5 h-3.5" />
-              <span>{user.designation || 'HR Staff Officer'}</span>
+              <span>{user.designation || designationFallback}</span>
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
-              {user.account_type === 'personnel' ? formatPersonnelPlacement(user) : (user.academic_program_name || user.college_name || user.designation || 'Institutional account')}
+              {user.account_type === 'personnel' ? formatPersonnelPlacement(user) : (user.academic_program_name || user.college_name || 'Institutional account')}
             </p>
             <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
               <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">

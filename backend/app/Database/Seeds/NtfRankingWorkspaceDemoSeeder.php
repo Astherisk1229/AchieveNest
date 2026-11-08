@@ -215,7 +215,7 @@ class NtfRankingWorkspaceDemoSeeder extends Seeder
             'section_totals' => ['A' => $scores['area_a'], 'B' => $scores['area_b'], 'C' => $scores['area_c']],
             'grand_total' => $scores['total'],
             'items' => $items,
-            'evaluator' => ['full_name' => 'Demo HR Administrator', 'role' => 'HR Evaluator'],
+            'evaluator' => ['full_name' => 'HR Administrator', 'role' => 'HR Evaluator'],
         ];
         $this->db->table('personnel_evaluation_reports')->upsert([
             'id' => $state['report_id'],

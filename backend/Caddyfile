@@ -9,7 +9,6 @@
 		level DEBUG
 	}
 
-	frankenphp {}
 }
 
 :{$PORT:80} {

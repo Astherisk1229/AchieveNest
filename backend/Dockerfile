@@ -21,8 +21,9 @@ RUN apt-get update \
         python3 \
         python3-pip \
         python3-venv \
+        unzip \
     && rm -rf /var/lib/apt/lists/* \
-    && install-php-extensions gd intl mysqli \
+    && install-php-extensions gd intl mysqli zip \
     && python3 -m venv /opt/ocr-venv \
     && ln -s /opt/ocr-venv/bin/python /usr/local/bin/python
 

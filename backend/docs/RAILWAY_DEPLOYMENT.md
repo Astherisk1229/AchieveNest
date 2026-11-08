@@ -8,7 +8,9 @@ separate, observable steps.
 
 - Source branch: the reviewed branch first; change to `main` only after merge.
 - Root directory: `/backend`.
-- Builder: Railpack (automatic PHP detection from `composer.json`).
+- Production builder: Railpack (automatic PHP detection from `composer.json`).
+- Staging build workaround: use `/backend/Dockerfile` while Railpack's tool
+  download is unavailable.
 - Public directory variable: `RAILPACK_PHP_ROOT_DIR=/app/public`.
 - Keep the repository's `/backend/php.ini` in the deployment image. It sets
   `upload_max_filesize=10M` to match the application's evidence policy and
@@ -28,11 +30,16 @@ separate, observable steps.
   mkdir -p /app/writable/cache /app/writable/logs /app/writable/session /app/writable/uploads/evidence /app/writable/debugbar /app/writable/backups /app/writable/restore_test /app/writable/demo-credentials && freshclam --quiet || true; exec /start-container.sh
   ```
 
-  Do not replace `/start-container.sh`; it is supplied by Railpack's PHP
-  provider and starts FrankenPHP with Railway's runtime variables.
+  This command is for Railpack deployments. A Dockerfile deployment interprets
+  a configured start command in exec form, so shell operators must be wrapped
+  in `/bin/sh -c`. For the staging Dockerfile build, `railway.json` applies the
+  environment-specific `/start-container.sh` command instead. That script
+  creates the writable directories and then starts FrankenPHP; the image
+  already seeds ClamAV signatures during the build.
 
-Railway's legacy `railway.toml`/`railway.json` configuration format is being
-retired on 2026-12-01, so this repository does not add a new legacy config file.
+The staging override uses Railway's legacy `railway.json` format, which is
+scheduled for retirement on 2026-12-01. Replace it with the supported
+infrastructure-as-code format before that date.
 
 ## 2. Railway variables
 

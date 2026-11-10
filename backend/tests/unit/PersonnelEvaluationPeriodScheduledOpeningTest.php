@@ -18,12 +18,13 @@ final class PersonnelEvaluationPeriodScheduledOpeningTest extends TestCase
             id TEXT PRIMARY KEY, created_by TEXT, evaluation_type TEXT, personnel_group TEXT,
             status TEXT, submission_open_at TEXT, submission_close_at TEXT, evaluation_start_at TEXT, evaluation_end_at TEXT
         )');
-        $now = time();
+        $now = new DateTimeImmutable('now', new DateTimeZone('Asia/Manila'));
         $db->table('personnel_evaluation_periods')->insertBatch([
-            ['id'=>'due-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>date('Y-m-d H:i:s', $now - 60), 'submission_close_at'=>date('Y-m-d H:i:s', $now + 3600)],
-            ['id'=>'future-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>date('Y-m-d H:i:s', $now + 3600), 'submission_close_at'=>date('Y-m-d H:i:s', $now + 7200)],
-            ['id'=>'expired-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>date('Y-m-d H:i:s', $now - 7200), 'submission_close_at'=>date('Y-m-d H:i:s', $now - 3600)],
-            ['id'=>'due-ntp', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'NON_TEACHING_FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>date('Y-m-d H:i:s', $now - 60), 'submission_close_at'=>date('Y-m-d H:i:s', $now + 3600)],
+            ['id'=>'due-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>$now->modify('-60 seconds')->format('Y-m-d H:i:s'), 'submission_close_at'=>$now->modify('+3600 seconds')->format('Y-m-d H:i:s'), 'evaluation_start_at'=>null, 'evaluation_end_at'=>null],
+            ['id'=>'future-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>$now->modify('+3600 seconds')->format('Y-m-d H:i:s'), 'submission_close_at'=>$now->modify('+7200 seconds')->format('Y-m-d H:i:s'), 'evaluation_start_at'=>null, 'evaluation_end_at'=>null],
+            ['id'=>'expired-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>$now->modify('-7200 seconds')->format('Y-m-d H:i:s'), 'submission_close_at'=>$now->modify('-3600 seconds')->format('Y-m-d H:i:s'), 'evaluation_start_at'=>null, 'evaluation_end_at'=>null],
+            ['id'=>'due-ntp', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'NON_TEACHING_FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>$now->modify('-60 seconds')->format('Y-m-d H:i:s'), 'submission_close_at'=>$now->modify('+3600 seconds')->format('Y-m-d H:i:s'), 'evaluation_start_at'=>null, 'evaluation_end_at'=>null],
+            ['id'=>'expired-evaluation-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'EVALUATION_ONGOING', 'submission_open_at'=>null, 'submission_close_at'=>null, 'evaluation_start_at'=>null, 'evaluation_end_at'=>$now->modify('-60 seconds')->format('Y-m-d H:i:s')],
         ]);
 
         $service = new class($db) extends PersonnelEvaluationPeriodService {
@@ -36,9 +37,11 @@ final class PersonnelEvaluationPeriodScheduledOpeningTest extends TestCase
         };
 
         self::assertSame(1, $service->openDueScheduledSubmissions('FACULTY'));
-        self::assertSame(['due-faculty'], array_column($service->transitions, 'id'));
+        self::assertSame(['due-faculty', 'expired-evaluation-faculty'], array_column($service->transitions, 'id'));
         self::assertSame('open-submissions', $service->transitions[0]['action']);
         self::assertStringStartsWith('scheduled-open:due-faculty:', $service->transitions[0]['requestId']);
+        self::assertSame('close', $service->transitions[1]['action']);
+        self::assertSame('scheduled-evaluation-close:expired-evaluation-faculty', $service->transitions[1]['requestId']);
         $db->close();
     }
 }

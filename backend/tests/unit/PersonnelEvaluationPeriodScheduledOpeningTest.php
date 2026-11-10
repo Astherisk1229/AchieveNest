@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 final class PersonnelEvaluationPeriodScheduledOpeningTest extends TestCase
 {
-    public function testDueDraftPeriodsAreOpenedWhileFutureAndExpiredDraftsRemainClosed(): void
+    public function testScheduledTransitionsOpenDueDraftsAndCloseExpiredEvaluationWindows(): void
     {
         $db = DatabaseConfig::connect([
             'DSN' => '', 'hostname' => '', 'username' => '', 'password' => '',
@@ -25,6 +25,7 @@ final class PersonnelEvaluationPeriodScheduledOpeningTest extends TestCase
             ['id'=>'expired-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>$now->modify('-7200 seconds')->format('Y-m-d H:i:s'), 'submission_close_at'=>$now->modify('-3600 seconds')->format('Y-m-d H:i:s'), 'evaluation_start_at'=>null, 'evaluation_end_at'=>null],
             ['id'=>'due-ntp', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'NON_TEACHING_FACULTY', 'status'=>'DRAFT', 'submission_open_at'=>$now->modify('-60 seconds')->format('Y-m-d H:i:s'), 'submission_close_at'=>$now->modify('+3600 seconds')->format('Y-m-d H:i:s'), 'evaluation_start_at'=>null, 'evaluation_end_at'=>null],
             ['id'=>'expired-evaluation-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'EVALUATION_ONGOING', 'submission_open_at'=>null, 'submission_close_at'=>null, 'evaluation_start_at'=>null, 'evaluation_end_at'=>$now->modify('-60 seconds')->format('Y-m-d H:i:s')],
+            ['id'=>'missed-evaluation-faculty', 'created_by'=>'hr-1', 'evaluation_type'=>'RANKING_PROMOTION', 'personnel_group'=>'FACULTY', 'status'=>'SUBMISSION_CLOSED', 'submission_open_at'=>null, 'submission_close_at'=>null, 'evaluation_start_at'=>$now->modify('-7200 seconds')->format('Y-m-d H:i:s'), 'evaluation_end_at'=>$now->modify('-60 seconds')->format('Y-m-d H:i:s')],
         ]);
 
         $service = new class($db) extends PersonnelEvaluationPeriodService {
@@ -37,11 +38,13 @@ final class PersonnelEvaluationPeriodScheduledOpeningTest extends TestCase
         };
 
         self::assertSame(1, $service->openDueScheduledSubmissions('FACULTY'));
-        self::assertSame(['due-faculty', 'expired-evaluation-faculty'], array_column($service->transitions, 'id'));
+        self::assertSame(['due-faculty', 'expired-evaluation-faculty', 'missed-evaluation-faculty'], array_column($service->transitions, 'id'));
         self::assertSame('open-submissions', $service->transitions[0]['action']);
         self::assertStringStartsWith('scheduled-open:due-faculty:', $service->transitions[0]['requestId']);
         self::assertSame('close', $service->transitions[1]['action']);
         self::assertSame('scheduled-evaluation-close:expired-evaluation-faculty', $service->transitions[1]['requestId']);
+        self::assertSame('close', $service->transitions[2]['action']);
+        self::assertSame('scheduled-evaluation-close:missed-evaluation-faculty', $service->transitions[2]['requestId']);
         $db->close();
     }
 }

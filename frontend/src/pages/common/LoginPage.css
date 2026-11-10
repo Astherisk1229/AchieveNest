@@ -1,0 +1,157 @@
+.auth-login-shell {
+  isolation: isolate;
+  background: #06281e;
+}
+
+.auth-login-backdrop {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #06281e;
+}
+
+.auth-login-photo {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 48%;
+  transform: scale(1.015);
+}
+
+.auth-login-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(4, 37, 28, 0.53) 0%, rgba(4, 37, 28, 0.23) 47%, rgba(3, 29, 23, 0.58) 100%),
+    linear-gradient(0deg, rgba(3, 30, 23, 0.48) 0%, transparent 47%, rgba(4, 29, 24, 0.18) 100%);
+}
+
+.auth-login-aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(16, 185, 129, 0.24), transparent 37%),
+    radial-gradient(ellipse at 100% 100%, rgba(34, 211, 238, 0.2), transparent 38%);
+}
+
+.auth-login-glow {
+  position: absolute;
+  width: min(38vw, 34rem);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(86px);
+  opacity: 0.2;
+  will-change: transform;
+  animation: login-aurora-drift 18s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+.auth-login-glow--teal {
+  top: -28%;
+  left: -10%;
+  background: #10b981;
+}
+
+.auth-login-glow--cyan {
+  right: -12%;
+  bottom: -34%;
+  background: #22d3ee;
+  animation-delay: -9s;
+}
+
+.auth-login-curves {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  opacity: 0.82;
+  filter: drop-shadow(0 0 9px rgba(45, 212, 191, 0.28));
+}
+
+.auth-login-curves path {
+  fill: none;
+  stroke: url(#login-aurora-stroke);
+  stroke-width: 1.15;
+  stroke-dasharray: 10 16;
+  animation: login-aurora-flow 28s linear infinite;
+}
+
+.auth-login-curves path + path {
+  stroke-dasharray: 4 20;
+  animation-duration: 36s;
+  animation-direction: reverse;
+}
+
+.auth-login-brandmark {
+  animation: login-mark-arrive 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-login-identity {
+  animation: login-copy-arrive 700ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.auth-login-card {
+  animation: login-card-arrive 800ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
+}
+
+@keyframes login-aurora-drift {
+  from { transform: translate3d(-3%, -2%, 0) scale(0.94); }
+  to { transform: translate3d(5%, 4%, 0) scale(1.06); }
+}
+
+@keyframes login-aurora-flow {
+  to { stroke-dashoffset: -780; }
+}
+
+@keyframes login-card-arrive {
+  from { opacity: 0.96; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes login-mark-arrive {
+  from { opacity: 0.94; transform: translate3d(0, 8px, 0) scale(0.98); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes login-copy-arrive {
+  from { opacity: 0.96; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@media (max-width: 1023px) {
+  .auth-login-photo {
+    object-position: 50% 48%;
+  }
+
+  .auth-login-shade {
+    background:
+      linear-gradient(180deg, rgba(4, 37, 28, 0.3), rgba(3, 30, 23, 0.58)),
+      radial-gradient(ellipse at 50% 0%, rgba(16, 185, 129, 0.18), transparent 48%);
+  }
+
+  .auth-login-glow {
+    width: min(66vw, 26rem);
+    filter: blur(64px);
+    opacity: 0.16;
+  }
+
+  .auth-login-curves {
+    opacity: 0.46;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-login-glow,
+  .auth-login-curves path,
+  .auth-login-brandmark,
+  .auth-login-identity,
+  .auth-login-card {
+    animation: none;
+    transform: none;
+  }
+}
+

@@ -38,6 +38,7 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
     user_type: 'student',
     active_role_context: 'student'
   }
+  const displayName = String(user?.full_name || '').replace(/^Demo\s+/i, '')
 
   const accountType = normalizeAccountType(user?.account_type || user?.user_type || 'student')
   const activeRoleContext = normalizeRoleContext(authRoleContext || user?.active_role_context || accountType)
@@ -216,13 +217,13 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
             className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition active:scale-[0.98] cursor-pointer group"
           >
             <Avatar size="sm" className="w-9 h-9 border-2 border-[#16834a] shadow-xs">
-              <AvatarImage src={user?.avatar_url || ''} alt={user?.full_name ? `${user.full_name} profile picture` : 'Profile picture'} />
-              <AvatarFallback>{user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'A'}</AvatarFallback>
+              <AvatarImage src={user?.avatar_url || ''} alt={displayName ? `${displayName} profile picture` : 'Profile picture'} />
+              <AvatarFallback>{displayName ? displayName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'A'}</AvatarFallback>
               <AvatarBadge className="bg-emerald-500 border border-white dark:border-slate-900" />
             </Avatar>
 
             <div className="text-left hidden sm:block">
-              <p className="text-xs font-bold text-[#123D2A] dark:text-white leading-tight">{user?.full_name || 'Juan A. Dela Cruz'}</p>
+              <p className="text-xs font-bold text-[#123D2A] dark:text-white leading-tight">{displayName || 'Juan A. Dela Cruz'}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="text-[11px] font-medium text-[#3F6B52] dark:text-slate-400 capitalize flex items-center gap-1">
                   <User className="w-3 h-3 text-[#176B43] dark:text-emerald-400" />
@@ -241,11 +242,11 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
                 
                 <div className="flex items-center gap-3 rounded-xl border border-[#dde6dd] bg-[#f8faf7] p-3 dark:border-slate-800 dark:bg-slate-800/60">
                   {canSwitchRole ? <button type="button" onClick={() => setProfileView('roles')} aria-label={`Switch role from ${getUserTypeLabel()}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
-                    <Avatar size="sm" className="h-10 w-10 shrink-0 border border-[#dde6dd] dark:border-slate-700"><AvatarImage src={user?.avatar_url || ''} alt=""/><AvatarFallback>{user?.full_name ? user.full_name.split(' ').map(name => name[0]).join('').slice(0, 2) : 'A'}</AvatarFallback></Avatar>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-extrabold text-[#123D2A] dark:text-white">{user?.full_name || 'Account'}</span><span className="mt-0.5 block truncate text-[11px] text-[#3F6B52] dark:text-slate-400">{getUserTypeLabel()}</span></span><ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-slate-500" aria-hidden="true"/>
+                    <Avatar size="sm" className="h-10 w-10 shrink-0 border border-[#dde6dd] dark:border-slate-700"><AvatarImage src={user?.avatar_url || ''} alt=""/><AvatarFallback>{displayName ? displayName.split(' ').map(name => name[0]).join('').slice(0, 2) : 'A'}</AvatarFallback></Avatar>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-extrabold text-[#123D2A] dark:text-white">{displayName || 'Account'}</span><span className="mt-0.5 block truncate text-[11px] text-[#3F6B52] dark:text-slate-400">{getUserTypeLabel()}</span></span><ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-slate-500" aria-hidden="true"/>
                   </button> : <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <Avatar size="sm" className="h-10 w-10 shrink-0 border border-[#dde6dd] dark:border-slate-700"><AvatarImage src={user?.avatar_url || ''} alt=""/><AvatarFallback>{user?.full_name ? user.full_name.split(' ').map(name => name[0]).join('').slice(0, 2) : 'A'}</AvatarFallback></Avatar>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-extrabold text-[#123D2A] dark:text-white">{user?.full_name || 'Account'}</span><span className="mt-0.5 block truncate text-[11px] text-[#3F6B52] dark:text-slate-400">{getUserTypeLabel()}</span></span>
+                    <Avatar size="sm" className="h-10 w-10 shrink-0 border border-[#dde6dd] dark:border-slate-700"><AvatarImage src={user?.avatar_url || ''} alt=""/><AvatarFallback>{displayName ? displayName.split(' ').map(name => name[0]).join('').slice(0, 2) : 'A'}</AvatarFallback></Avatar>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-extrabold text-[#123D2A] dark:text-white">{displayName || 'Account'}</span><span className="mt-0.5 block truncate text-[11px] text-[#3F6B52] dark:text-slate-400">{getUserTypeLabel()}</span></span>
                   </div>}
                 </div>
 

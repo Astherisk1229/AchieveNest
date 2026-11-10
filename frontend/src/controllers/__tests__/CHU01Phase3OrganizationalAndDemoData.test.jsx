@@ -171,6 +171,10 @@ describe('CHU-01 Phase 3 — Organizational and Demo Data Preparation Test Suite
       const emails = new Set(demoRoster.map(p => p.email))
       expect(emails.size).toBe(10)
       demoRoster.forEach(p => {
+        if (p.key === 'HR_ADMIN') {
+          expect(p.email).toBe('hr@ndmu.edu.ph')
+          return
+        }
         expect(p.email).toMatch(/^demo\..+@ndmu\.edu\.ph$/)
       })
     })

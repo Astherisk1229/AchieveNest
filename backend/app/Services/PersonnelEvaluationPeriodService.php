@@ -15,7 +15,7 @@ class PersonnelEvaluationPeriodService
         'open-submissions' => ['from' => 'DRAFT', 'to' => 'OPEN_FOR_SUBMISSION'],
         'close-submissions' => ['from' => 'OPEN_FOR_SUBMISSION', 'to' => 'SUBMISSION_CLOSED'],
         'start-evaluation' => ['from' => 'SUBMISSION_CLOSED', 'to' => 'EVALUATION_ONGOING'],
-        'close' => ['from' => 'EVALUATION_ONGOING', 'to' => 'CLOSED'],
+        'close' => ['from' => ['SUBMISSION_CLOSED', 'EVALUATION_ONGOING'], 'to' => 'CLOSED'],
         'archive' => ['from' => 'CLOSED', 'to' => 'ARCHIVED'],
         // Cancellation is terminal for an active track.  It deliberately has a
         // separate state from ARCHIVED so a cancelled period is not presented as
@@ -135,10 +135,14 @@ class PersonnelEvaluationPeriodService
                 log_message('error', 'Scheduled personnel evaluation period {periodId} could not start evaluation: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
             }
         }
+        // If a read misses the evaluation window entirely, the period can still
+        // be SUBMISSION_CLOSED when evaluation_end_at passes. Close both active
+        // evaluation tracks and tracks whose evaluation window elapsed before
+        // the scheduled start transition ran.
         $finished = $this->db->table('personnel_evaluation_periods')
             ->select('id, created_by')
             ->where('evaluation_type', 'RANKING_PROMOTION')
-            ->where('status', 'EVALUATION_ONGOING')
+            ->whereIn('status', ['SUBMISSION_CLOSED', 'EVALUATION_ONGOING'])
             ->where('evaluation_end_at <', $now);
         if ($personnelGroup !== null) $finished->where('personnel_group', $personnelGroup);
         foreach ($finished->get()->getResultArray() as $period) {
@@ -269,6 +273,7 @@ class PersonnelEvaluationPeriodService
             if ($action === 'open-submissions') $this->validateOperational($row, $id);
             if ($action === 'start-evaluation' && self::manilaNow() < $row['evaluation_start_at']) throw new RuntimeException('EVALUATION_WINDOW_NOT_OPEN: Evaluation cannot start before its scheduled time.');
             if ($action === 'close-submissions' && self::manilaNow() <= $row['submission_close_at']) throw new RuntimeException('SUBMISSION_WINDOW_OPEN: Submissions close automatically after their configured end time.');
+            if ($action === 'close' && (empty($row['evaluation_end_at']) || self::manilaNow() <= $row['evaluation_end_at'])) throw new RuntimeException('EVALUATION_WINDOW_OPEN: Evaluation closes automatically after its configured end time.');
             if ($action === 'open-submissions' && self::manilaNow() < $row['submission_open_at']) throw new RuntimeException('SUBMISSION_WINDOW_NOT_OPEN: Submissions cannot open before their scheduled time.');
             if ($action === 'open-submissions' && self::manilaNow() > $row['submission_close_at']) throw new RuntimeException('SUBMISSION_WINDOW_EXPIRED: An expired submission window cannot be opened.');
 

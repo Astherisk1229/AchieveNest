@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { ArrowRight, CalendarDays, ChevronDown, Filter, MoreVertical, Plus, Search, Settings2 } from 'lucide-react'
 import { listRankingCycles } from '../../services/personnelEvaluationPeriodService'
 import RankingCycleContext from '../../components/ranking/RankingCycleContext'
@@ -31,10 +32,14 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function RowMenu({ cycle, onSelect }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [position, setPosition] = useState(null)
+  const buttonRef = useRef(null)
+  const menuRef = useRef(null)
   useEffect(() => {
     if (!open) return undefined
-    const close = event => { if (event.type === 'keydown' ? event.key === 'Escape' : !ref.current?.contains(event.target)) setOpen(false) }
+    const close = event => {
+      if (event.type === 'keydown' ? event.key === 'Escape' : !buttonRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false)
+    }
     document.addEventListener('mousedown', close); document.addEventListener('keydown', close)
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close) }
   }, [open])
@@ -47,16 +52,30 @@ function RowMenu({ cycle, onSelect }) {
     actions.includes('cancel') ? ['cancel', 'Cancel Period'] : null,
     actions.includes('delete') || ['CANCELLED', 'ARCHIVED'].includes(cycle.lifecycle_status?.key) ? ['delete', 'Delete Period'] : null,
   ].filter(Boolean)
-  return <div ref={ref} className="relative">
-    <button type="button" aria-label={`More actions for ${cycle.display_name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-white"><MoreVertical className="h-4 w-4"/></button>
-    {open && <div role="menu" className="absolute right-0 z-30 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-slate-800 dark:bg-slate-950">
+  useLayoutEffect(() => {
+    if (!open) return undefined
+    const updatePosition = () => {
+      const anchor = buttonRef.current?.getBoundingClientRect()
+      if (!anchor) return
+      const menuHeight = menuRef.current?.offsetHeight || 200
+      const hasRoomBelow = window.innerHeight - anchor.bottom >= menuHeight + 8
+      setPosition({ top: hasRoomBelow ? anchor.bottom + 4 : Math.max(8, anchor.top - menuHeight - 4), right: Math.max(8, window.innerWidth - anchor.right) })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => { window.removeEventListener('resize', updatePosition); window.removeEventListener('scroll', updatePosition, true) }
+  }, [open, items.length])
+  return <>
+    <button ref={buttonRef} type="button" aria-label={`More actions for ${cycle.display_name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { setPosition(null); setOpen(value => !value) }} className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-white"><MoreVertical className="h-4 w-4"/></button>
+    {open && createPortal(<div ref={menuRef} role="menu" style={{ position: 'fixed', top: position?.top ?? 0, right: position?.right ?? 0, visibility: position ? 'visible' : 'hidden' }} className="z-50 max-h-[calc(100vh-1rem)] w-48 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-slate-800 dark:bg-slate-950">
       {items.map(([key, label]) => {
         const deleteBlocked = key === 'delete' && !actions.includes('delete')
         const blockedReason = cycle.deletion_eligibility?.reason
         return <button key={key} type="button" role="menuitem" disabled={deleteBlocked} aria-disabled={deleteBlocked} title={deleteBlocked ? blockedReason : undefined} onClick={() => { if (deleteBlocked) return; setOpen(false); onSelect(key, cycle) }} className={`block w-full px-3 py-2 text-left text-sm font-semibold hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-900 ${key === 'archive' || key === 'delete' || key === 'cancel' ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'}`}>{label}</button>
       })}
-    </div>}
-  </div>
+    </div>, document.body)}
+  </>
 }
 
 function ScheduleCell({ schedule }) {

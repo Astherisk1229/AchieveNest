@@ -135,6 +135,19 @@ class PersonnelEvaluationPeriodService
                 log_message('error', 'Scheduled personnel evaluation period {periodId} could not start evaluation: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
             }
         }
+        $finished = $this->db->table('personnel_evaluation_periods')
+            ->select('id, created_by')
+            ->where('evaluation_type', 'RANKING_PROMOTION')
+            ->where('status', 'EVALUATION_ONGOING')
+            ->where('evaluation_end_at <', $now);
+        if ($personnelGroup !== null) $finished->where('personnel_group', $personnelGroup);
+        foreach ($finished->get()->getResultArray() as $period) {
+            try {
+                $this->transition((string) $period['id'], 'close', (string) $period['created_by'], 'scheduled-evaluation-close:' . $period['id']);
+            } catch (Throwable $error) {
+                log_message('error', 'Scheduled personnel evaluation period {periodId} could not close after evaluation: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
+            }
+        }
         return $opened;
     }
 

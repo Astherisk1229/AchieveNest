@@ -17,8 +17,9 @@ import {
 import { authenticateDemoUser, authenticateUser, getCurrentUser, requestPasswordReset } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import RouteAccessController from '../../controllers/RouteAccessController'
-import campusBanner from '../../assets/ndmu_login_bg.jpg'
+import campusBanner from './assets/ndmu-campus-login.jpg'
 import { AchieveNestLogo } from '../../components/brand'
+import './LoginPage.css'
 
 const demoAccounts = [
   { label: 'Student A', description: 'BSA / Accountancy', email: 'demo.student.a@ndmu.edu.ph' },
@@ -164,41 +165,48 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#071a13] font-sans text-slate-950 selection:bg-emerald-200 selection:text-emerald-950">
-      <div className="fixed inset-0 lg:hidden" aria-hidden="true">
-        <img src={campusBanner} alt="" className="h-full w-full object-cover object-center" />
-        <div className="absolute inset-0 bg-[#071a13]/80" />
+    <main className="auth-login-shell relative min-h-svh overflow-x-hidden font-sans text-slate-950 selection:bg-emerald-200 selection:text-emerald-950">
+      <div className="auth-login-backdrop" aria-hidden="true">
+        <img src={campusBanner} alt="" className="auth-login-photo" />
+        <div className="auth-login-shade" />
+        <div className="auth-login-aurora">
+          <span className="auth-login-glow auth-login-glow--teal" />
+          <span className="auth-login-glow auth-login-glow--cyan" />
+          <svg className="auth-login-curves" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="login-aurora-stroke" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0%" stopColor="#a7f3d0" stopOpacity="0" />
+                <stop offset="52%" stopColor="#5eead4" stopOpacity=".48" />
+                <stop offset="100%" stopColor="#67e8f9" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M-90 680 C 260 390, 430 920, 760 620 S 1220 270, 1530 520" />
+            <path d="M-80 760 C 260 485, 480 950, 820 700 S 1210 390, 1510 610" />
+          </svg>
+        </div>
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1920px] items-stretch lg:p-5 xl:p-7">
-        <section
-          className="relative hidden flex-1 overflow-hidden rounded-[28px] bg-[#071a13] lg:block"
-          style={{ containerType: 'size' }}
-          aria-label="Notre Dame of Marbel University campus"
-        >
-          {/* Soft backdrop: fills any space around the banner so it never looks letterboxed. */}
-          <img
-            src={campusBanner}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full scale-110 object-cover object-center blur-2xl brightness-75"
-          />
-          {/* Banner keeps the crest and the school name inside the visible area at any screen size:
-              it fills the panel like object-cover, but is never scaled past 190% of the panel width. */}
-          <img
-            src={campusBanner}
-            alt="Notre Dame of Marbel University campus at twilight"
-            className="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2"
-            style={{ width: 'min(max(100cqw, 212.5cqh), 190cqw)', height: 'auto' }}
-          />
+      <div className="auth-login-layout relative z-10 mx-auto grid min-h-svh w-full max-w-[1600px] items-center gap-7 px-4 py-6 sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1fr)_minmax(25rem,30rem)] lg:gap-10 lg:px-12 xl:px-16">
+        <section className="auth-login-brand mx-auto flex w-full max-w-[38rem] flex-col items-center text-center lg:mx-0 lg:items-start lg:pl-[clamp(2.5rem,6vw,5.5rem)] lg:text-left" aria-label="AchieveNest and Notre Dame of Marbel University">
+          <div className="auth-login-brandmark rounded-xl bg-white/95 px-3 py-1.5 shadow-[0_12px_36px_rgba(3,35,24,0.2)] ring-1 ring-white/70">
+            <AchieveNestLogo variant="horizontal" size="auth" />
+          </div>
+          <div className="auth-login-identity mt-4 max-w-[34rem] sm:mt-5 lg:mt-7">
+            <h2 className="text-balance text-2xl font-semibold leading-tight tracking-[-0.025em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.4)] sm:text-3xl lg:text-[2.7rem]">
+              <span className="block">Notre Dame of Marbel</span>
+              <span className="block">University</span>
+            </h2>
+            <p className="mt-3 text-sm font-medium tracking-[0.02em] text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)] lg:text-base">
+              Student &amp; Personnel Achievement Portal
+            </p>
+          </div>
         </section>
 
-        <section className="relative flex min-h-screen w-full items-center justify-center px-4 py-8 sm:px-8 lg:ml-5 lg:min-h-0 lg:w-[510px] lg:rounded-[28px] lg:bg-white lg:px-12 xl:w-[560px] xl:px-16">
-          <div className="w-full max-w-[430px] rounded-[24px] bg-white px-5 py-7 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:px-8 sm:py-9 lg:rounded-none lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none">
+        <section className="flex w-full items-center justify-center lg:mr-[clamp(1rem,3vw,2.5rem)] lg:justify-end" aria-label="Sign in to AchieveNest">
+          <div className="auth-login-card w-full max-w-[450px] rounded-[24px] bg-white px-5 py-7 shadow-[0_28px_90px_rgba(0,24,16,0.3)] ring-1 ring-white/75 sm:rounded-[28px] sm:px-9 sm:py-9 lg:px-10 lg:py-10">
             <header className="mb-8">
               <div className="mb-7">
-                <AchieveNestLogo variant="horizontal" size="auth" />
-                <p className="mt-1 text-xs font-medium text-slate-500">Notre Dame of Marbel University</p>
+                <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-800">NDMU Portal</p>
               </div>
 
               <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.035em] text-slate-950 sm:text-[2.35rem]">
@@ -451,3 +459,4 @@ export default function LoginPage() {
     </main>
   )
 }
+

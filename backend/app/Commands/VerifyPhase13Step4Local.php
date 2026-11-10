@@ -80,7 +80,7 @@ class VerifyPhase13Step4Local extends BaseCommand
         $coordBActor     = $getActor('demo.coordinator.b@ndmu.edu.ph');
         $facultyActor    = $getActor('demo.academic.personnel@ndmu.edu.ph');
         $osadActor       = $getActor('demo.osad.admin@ndmu.edu.ph');
-        $hrActor         = $getActor('demo.hr.admin@ndmu.edu.ph');
+        $hrActor         = $getActor('hr@ndmu.edu.ph');
         $deanActor       = $getActor('demo.dean@ndmu.edu.ph');
 
         $studentAId = $studentAActor['profile']['id'];

@@ -359,7 +359,7 @@ Post-launch operational follow-ups:
 ### Temporary production demo-administrator bootstrap
 
 The production login has no public self-registration path. If the explicitly
-authorized temporary accounts `demo.hr.admin@ndmu.edu.ph` and
+authorized temporary accounts `hr@ndmu.edu.ph` and
 `demo.osad.admin@ndmu.edu.ph` are required for a controlled launch exercise,
 use the CLI-only bootstrap command. It creates no other demo personas or
 scenario fixtures. Its administrator UUIDs are intentionally distinct from

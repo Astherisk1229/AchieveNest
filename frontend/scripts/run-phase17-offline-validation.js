@@ -320,7 +320,7 @@ async function runOfflineValidation() {
 
   // --- 5. HR ADMIN ---
   console.log('\n--- 5. HR Admin Offline Smoke ---')
-  await performLogin('demo.hr.admin@ndmu.edu.ph', DEMO_PASSWORD, true)
+  await performLogin('hr@ndmu.edu.ph', DEMO_PASSWORD, true)
   const hrUrl = await cdp.evaluate('window.location.pathname')
   await cdp.navigate(`${APP_URL}/hr-admin/personnel-directory`)
   await cdp.wait(1200)

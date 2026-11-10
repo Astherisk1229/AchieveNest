@@ -99,7 +99,7 @@ class DefenseDemoPersonaSeeder extends Seeder
                 'id'               => 'd0000000-0000-0000-0001-000000000005',
                 'institutional_id' => '2026-DEMO-005',
                 'name'             => 'HR Administrator',
-                'email'            => 'demo.hr.admin@ndmu.edu.ph',
+                'email'            => 'hr@ndmu.edu.ph',
                 'account_type'     => 'hr_admin',
                 'designation'      => 'HR Director',
                 'roles'            => ['hr_staff'],

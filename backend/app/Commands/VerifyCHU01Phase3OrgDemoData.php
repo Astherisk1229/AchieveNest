@@ -114,7 +114,7 @@ class VerifyCHU01Phase3OrgDemoData extends BaseCommand
         // ---------------------------------------------------------------------
         // Check 5: HR Admin Scope & Directory Visibility
         // ---------------------------------------------------------------------
-        $hrAdmin = $db->table('profiles')->where('email', 'demo.hr.admin@ndmu.edu.ph')->get()->getRowArray();
+        $hrAdmin = $db->table('profiles')->where('email', 'hr@ndmu.edu.ph')->get()->getRowArray();
         $hrRole = $hrAdmin ? $db->table('profile_roles')
             ->join('roles', 'roles.id = profile_roles.role_id')
             ->where('profile_roles.profile_id', $hrAdmin['id'])
@@ -174,7 +174,7 @@ class VerifyCHU01Phase3OrgDemoData extends BaseCommand
             'demo.student.b@ndmu.edu.ph',
             'demo.academic.personnel@ndmu.edu.ph',
             'demo.nonacademic.personnel@ndmu.edu.ph',
-            'demo.hr.admin@ndmu.edu.ph',
+            'hr@ndmu.edu.ph',
             'demo.osad.admin@ndmu.edu.ph',
             'demo.dean@ndmu.edu.ph',
             'demo.coordinator.a@ndmu.edu.ph',

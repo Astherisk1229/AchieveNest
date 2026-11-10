@@ -63,7 +63,7 @@ class BootstrapProductionDemoAdmins extends BaseCommand
             $this->upsertAdmin($db, [
                 'id' => self::HR_PROFILE_ID,
                 'institutional_id' => '2026-DEMO-005',
-                'email' => 'demo.hr.admin@ndmu.edu.ph',
+                'email' => 'hr@ndmu.edu.ph',
                 'full_name' => 'HR Administrator',
                 'account_type' => 'hr_admin',
                 'designation_title' => 'HR Director',
@@ -91,7 +91,7 @@ class BootstrapProductionDemoAdmins extends BaseCommand
             $transactionStarted = false;
 
             CLI::write("Created or reconciled exactly two {$config['target']} demo administrators.", 'green');
-            CLI::write('HR: demo.hr.admin@ndmu.edu.ph (first-login password change required)', 'yellow');
+            CLI::write('HR: hr@ndmu.edu.ph (first-login password change required)', 'yellow');
             CLI::write('OSAD: demo.osad.admin@ndmu.edu.ph (first-login password change required)', 'yellow');
             CLI::write('Remove all ACHIEVENEST_BOOTSTRAP_* variables immediately.', 'yellow');
 

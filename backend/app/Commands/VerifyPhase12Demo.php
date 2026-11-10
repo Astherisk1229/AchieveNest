@@ -107,7 +107,7 @@ class VerifyPhase12Demo extends BaseCommand
             'demo.student.b@ndmu.edu.ph',
             'demo.academic.personnel@ndmu.edu.ph',
             'demo.nonacademic.personnel@ndmu.edu.ph',
-            'demo.hr.admin@ndmu.edu.ph',
+            'hr@ndmu.edu.ph',
             'demo.osad.admin@ndmu.edu.ph',
             'demo.dean@ndmu.edu.ph',
             'demo.coordinator.a@ndmu.edu.ph',
@@ -150,7 +150,7 @@ class VerifyPhase12Demo extends BaseCommand
         };
 
         // DEMO-007: HR Admin
-        $hrActor = $getActor('demo.hr.admin@ndmu.edu.ph');
+        $hrActor = $getActor('hr@ndmu.edu.ph');
         $runTest('DEMO-007', 'HR Admin persona has hr_staff role and active status', $hrActor !== null && in_array('hr_staff', $hrActor['roles'] ?? [], true));
 
         // DEMO-008: OSAD Admin

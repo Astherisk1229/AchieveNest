@@ -57,7 +57,7 @@ This document provides the recommended presentation script and action sequence f
 ### 5. Personnel Accomplishments & HR Ranking Oversight
 1. **Login as Demo Academic Personnel** (`demo.academic.personnel@ndmu.edu.ph`).
    - View submitted research paper publication (`IEEE Transactions`).
-2. **Login as Demo HR Administrator** (`demo.hr.admin@ndmu.edu.ph`).
+2. **Login as Demo HR Administrator** (`hr@ndmu.edu.ph`).
    - View Personnel Directory across academic and non-academic classifications.
    - Inspect Administrator Ranking Scale (Professional Development, Productivity/Creative Work, Service/Leadership).
 

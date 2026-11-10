@@ -28,7 +28,7 @@ class SyncDefenseDemoCredentials extends BaseCommand
         'demo.student.b@ndmu.edu.ph',
         'demo.academic.personnel@ndmu.edu.ph',
         'demo.nonacademic.personnel@ndmu.edu.ph',
-        'demo.hr.admin@ndmu.edu.ph',
+        'hr@ndmu.edu.ph',
         'demo.osad.admin@ndmu.edu.ph',
         'demo.dean@ndmu.edu.ph',
         'demo.coordinator.a@ndmu.edu.ph',

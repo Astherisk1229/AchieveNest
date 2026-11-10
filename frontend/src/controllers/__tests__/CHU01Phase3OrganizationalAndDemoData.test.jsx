@@ -158,7 +158,7 @@ describe('CHU-01 Phase 3 — Organizational and Demo Data Preparation Test Suite
       { key: 'STUDENT_B', email: 'demo.student.b@ndmu.edu.ph', role: 'student', scope: 'program' },
       { key: 'FACULTY_ACAD', email: 'demo.academic.personnel@ndmu.edu.ph', role: 'personnel', scope: 'college' },
       { key: 'STAFF_NONACAD', email: 'demo.nonacademic.personnel@ndmu.edu.ph', role: 'personnel', scope: 'unit' },
-      { key: 'HR_ADMIN', email: 'demo.hr.admin@ndmu.edu.ph', role: 'hr_staff', scope: 'university' },
+      { key: 'HR_ADMIN', email: 'hr@ndmu.edu.ph', role: 'hr_staff', scope: 'university' },
       { key: 'OSAD_ADMIN', email: 'demo.osad.admin@ndmu.edu.ph', role: 'osad_staff', scope: 'university' },
       { key: 'DEAN_CBA', email: 'demo.dean@ndmu.edu.ph', role: 'dean', scope: 'college' },
       { key: 'COORD_A', email: 'demo.coordinator.a@ndmu.edu.ph', role: 'program_coordinator', scope: 'program' },

@@ -25,7 +25,7 @@ const demoAccounts = [
   { label: 'Student B', description: 'BSBA-FM / Financial Mgmt', email: 'demo.student.b@ndmu.edu.ph' },
   { label: 'Academic Personnel', description: 'CBA Faculty', email: 'demo.academic.personnel@ndmu.edu.ph' },
   { label: 'Non-Academic Personnel', description: 'HR Unit Staff', email: 'demo.nonacademic.personnel@ndmu.edu.ph' },
-  { label: 'HR Administrator', description: 'HR Admin Portal', email: 'demo.hr.admin@ndmu.edu.ph' },
+  { label: 'HR Administrator', description: 'HR Admin Portal', email: 'hr@ndmu.edu.ph' },
   { label: 'OSAD Administrator', description: 'OSAD Admin Portal', email: 'demo.osad.admin@ndmu.edu.ph' },
   { label: 'College Dean', description: 'CBA Dean Oversight', email: 'demo.dean@ndmu.edu.ph' },
   { label: 'Program Coordinator A', description: 'BSA Coordinator Queue', email: 'demo.coordinator.a@ndmu.edu.ph' },

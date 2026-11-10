@@ -104,7 +104,7 @@ npm run dev
 | 2 | **Student B** | `demo.student.b@ndmu.edu.ph` | Student Portal (BSBA-FM Program, Isolated) |
 | 3 | **Academic Personnel** | `demo.academic.personnel@ndmu.edu.ph` | Personnel Portal (CBA College, Academic) |
 | 4 | **Non-Academic Personnel** | `demo.nonacademic.personnel@ndmu.edu.ph` | Personnel Portal (HR Unit, Non-Academic) |
-| 5 | **HR Administrator** | `demo.hr.admin@ndmu.edu.ph` | HR Admin Portal (Directory, Dean Governance) |
+| 5 | **HR Administrator** | `hr@ndmu.edu.ph` | HR Admin Portal (Directory, Dean Governance) |
 | 6 | **OSAD Administrator** | `demo.osad.admin@ndmu.edu.ph` | OSAD Admin Portal (Programs, Coord/Mod Governance) |
 | 7 | **College Dean** | `demo.dean@ndmu.edu.ph` | Personnel Portal (CBA College Dean Scope) |
 | 8 | **Program Coordinator A** | `demo.coordinator.a@ndmu.edu.ph` | Personnel Portal (BSA Coordinator Scope) |

@@ -97,7 +97,7 @@ powershell -ExecutionPolicy Bypass -File scripts\phase17-secret-audit.ps1
 Demo account passwords are read dynamically from [`backend/.env`](<REPO_ROOT>/backend/.env):
 
 ```ini
-ACHIEVENEST_DEMO_PASSWORD = Ndmu#DefenseRotated2026!o0CmS2R8!
+Set ACHIEVENEST_DEMO_PASSWORD in backend/.env locally; do not commit its value.
 ```
 
 ### Pre-Seeded Accounts
@@ -108,7 +108,7 @@ ACHIEVENEST_DEMO_PASSWORD = Ndmu#DefenseRotated2026!o0CmS2R8!
 | **Student B** | `demo.student.b@ndmu.edu.ph` |
 | **Academic Personnel** | `demo.academic.personnel@ndmu.edu.ph` |
 | **Non-Academic Personnel** | `demo.nonacademic.personnel@ndmu.edu.ph` |
-| **HR Administrator** | `demo.hr.admin@ndmu.edu.ph` |
+| **HR Administrator** | `hr@ndmu.edu.ph` |
 | **OSAD Administrator** | `demo.osad.admin@ndmu.edu.ph` |
 | **College Dean** | `demo.dean@ndmu.edu.ph` |
 | **Program Coordinator A** | `demo.coordinator.a@ndmu.edu.ph` |

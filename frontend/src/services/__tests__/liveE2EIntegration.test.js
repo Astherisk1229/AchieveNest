@@ -64,7 +64,7 @@ const PERSONAS = [
   {
     key: 'hr_admin',
     name: 'HR Administrator',
-    email: 'demo.hr.admin@ndmu.edu.ph',
+    email: 'hr@ndmu.edu.ph',
     expectedAccountType: 'hr_admin',
   },
   {
@@ -274,7 +274,7 @@ describeLive('Phase 16 — Live Backend E2E Integration Suite', { timeout: 30000
       const hrLogin = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ institutional_email: 'demo.hr.admin@ndmu.edu.ph', password: DEMO_PASSWORD }),
+        body: JSON.stringify({ institutional_email: 'hr@ndmu.edu.ph', password: DEMO_PASSWORD }),
       })
       const hrToken = (await hrLogin.json()).data.access_token
 
@@ -292,7 +292,7 @@ describeLive('Phase 16 — Live Backend E2E Integration Suite', { timeout: 30000
       const loginRes = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ institutional_email: 'demo.hr.admin@ndmu.edu.ph', password: DEMO_PASSWORD }),
+        body: JSON.stringify({ institutional_email: 'hr@ndmu.edu.ph', password: DEMO_PASSWORD }),
       })
 
       const loginData = await loginRes.json()
